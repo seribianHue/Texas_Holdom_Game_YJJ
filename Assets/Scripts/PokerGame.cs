@@ -40,20 +40,24 @@ public class PokerGame : MonoBehaviour
             return cardPrefabs.HeartCards[rank];
         else if (suit == 2)
             return cardPrefabs.DiamodCards[rank];
-        else
+        else if (suit == 3)
             return cardPrefabs.CloverCards[rank];
+        else return null;
     }
 
-    class PlayerCards
+    class Player
     {
         public int[] card1 = new int[2];
         public int[] card2 = new int[2];
 
+        public HAND playerHand;
+
+        public int[] highestCard = new int[2];
         
     }
 
     public int playerNum;
-    PlayerCards[] playerCards;
+    Player[] playerCards;
 
     int[,] ShareCards;
 
@@ -75,11 +79,11 @@ public class PokerGame : MonoBehaviour
             print(ShareCards[i, 0] + ", " + ShareCards[i, 1]);
         }
 
-        playerCards = new PlayerCards[playerNum];
+        playerCards = new Player[playerNum];
         for(int i = 0; i < playerNum; i++)
         {
             int[,] tempCard = GetRandCard(PokerCardDeck, 2);
-            playerCards[i] = new PlayerCards();
+            playerCards[i] = new Player();
             playerCards[i].card1[0] = tempCard[0, 0];
             playerCards[i].card1[1] = tempCard[0, 1]; 
             playerCards[i].card2[0] = tempCard[1, 0];
@@ -90,20 +94,20 @@ public class PokerGame : MonoBehaviour
             Instantiate(card1, playerPlace[i].transform.GetChild(0));
             Instantiate(card2, playerPlace[i].transform.GetChild(1));
         }
-        HAND highestHand = HAND.HIGH_CARD;
         for(int i = 0; i < playerNum; i++)
         {
-            int[] highestPlayerCard = new int[2];
-            HAND playerHand = Search_Hand(playerCards[i], out highestPlayerCard);
-            if (playerHand < highestHand)
-                highestHand = playerHand;
-            playerPlace[i].transform.GetChild(2).GetComponent<TextMeshPro>().text = playerHand.ToString();
+
+            playerCards[i].playerHand = Search_Hand(playerCards[i], out playerCards[i].highestCard);
+            playerPlace[i].transform.GetChild(3).GetComponent<TextMeshPro>().text = playerCards[i].playerHand.ToString();
+            if (playerCards[i].highestCard[0] != -1)
+                Instantiate(GetCardPrefab(playerCards[i].highestCard[0], playerCards[i].highestCard[1]), playerPlace[i].transform.GetChild(2));
+            
         }
     }
 
     enum HAND { ROYAL_FLUSH, STRAIGHT_FLUSH, FOUR_KIND, FUll_HOUSE, 
         FLUSH, STRAIGHT, THREE_KIND, TWO_PAIR, PAIR, HIGH_CARD}
-    HAND Search_Hand(PlayerCards playerC, out int[] highestHandCard)
+    HAND Search_Hand(Player playerC, out int[] highestHandCard)
     {
         highestHandCard = new int[2] { -1, -1};
 
@@ -125,27 +129,14 @@ public class PokerGame : MonoBehaviour
 
         //Royal Flush
         int suit = -1;
-        for(int i = 0; i < 4; i++)
+        for (int i = 3; i >= 0; i--)
         {
             if ((curCard[i, 12] != 0) && (curCard[i, 11] != 0) && (curCard[i, 10] != 0)
                     && (curCard[i, 9] != 0) && (curCard[i, 8] != 0) && (curCard[i, 7] != 0))
             {
-                for (int j = 0; j < 5; j++)
+                for (int j = 0; j < 4; j++)
                 {
                     if (playerC.card1[1] > playerC.card2[1])
-                    {
-                        if ((playerC.card2[0] == i) && (playerC.card2[1] == j))
-                        {
-                            highestHandCard[0] = i;
-                            highestHandCard[1] = j;
-                        }
-                        else if ((playerC.card1[0] == i) && (playerC.card1[1] == j))
-                        {
-                            highestHandCard[0] = i;
-                            highestHandCard[1] = j;
-                        }
-                    }
-                    else
                     {
                         if ((playerC.card1[0] == i) && (playerC.card1[1] == j))
                         {
@@ -153,6 +144,19 @@ public class PokerGame : MonoBehaviour
                             highestHandCard[1] = j;
                         }
                         else if ((playerC.card2[0] == i) && (playerC.card2[1] == j))
+                        {
+                            highestHandCard[0] = i;
+                            highestHandCard[1] = j;
+                        }
+                    }
+                    else
+                    {
+                        if ((playerC.card2[0] == i) && (playerC.card2[1] == j))
+                        {
+                            highestHandCard[0] = i;
+                            highestHandCard[1] = j;
+                        }
+                        else if ((playerC.card1[0] == i) && (playerC.card1[1] == j))
                         {
                             highestHandCard[0] = i;
                             highestHandCard[1] = j;
@@ -169,16 +173,23 @@ public class PokerGame : MonoBehaviour
         //Straight Flush
         //Highest not done
         int count = 0;
-        for(int i = 0; i < 4; i++)
+        for (int i = 3; i >= 0; i--)
         {
-            for(int j = 0; j < 13; j++)
+            for (int j = 0; j < 13; j++)
             {
                 if (curCard[i, j] == 1)
                 {
                     try
                     {
                         if (curCard[i, j + 1] == 1)
+                        {
                             count++;
+                            if(count >= 4)
+                            {
+                                highestHandCard[0] = i;
+                                highestHandCard[1] = j + 1;
+                            }
+                        }
                         else
                             count = 0;
                     }
@@ -205,25 +216,26 @@ public class PokerGame : MonoBehaviour
                 {
                     if (playerC.card1[1] > playerC.card2[1])
                     {
-                        if ((playerC.card2[0] == i) && (playerC.card2[1] == j))
-                        {
-                            highestHandCard[0] = i;
-                            highestHandCard[1] = j;
-                        }
-                        else if ((playerC.card1[0] == i) && (playerC.card1[1] == j))
-                        {
-                            highestHandCard[0] = i;
-                            highestHandCard[1] = j;
-                        }
-                    }
-                    else
-                    {
                         if ((playerC.card1[0] == i) && (playerC.card1[1] == j))
                         {
                             highestHandCard[0] = i;
                             highestHandCard[1] = j;
                         }
                         else if ((playerC.card2[0] == i) && (playerC.card2[1] == j))
+                        {
+                            highestHandCard[0] = i;
+                            highestHandCard[1] = j;
+                        }
+
+                    }
+                    else
+                    {
+                        if ((playerC.card2[0] == i) && (playerC.card2[1] == j))
+                        {
+                            highestHandCard[0] = i;
+                            highestHandCard[1] = j;
+                        }
+                        else if ((playerC.card1[0] == i) && (playerC.card1[1] == j))
                         {
                             highestHandCard[0] = i;
                             highestHandCard[1] = j;
@@ -259,12 +271,12 @@ public class PokerGame : MonoBehaviour
             {
                 if (playerC.card1[1] > playerC.card2[1])
                 {
-                    if (((playerC.card2[0] == same2Num) || (playerC.card2[0] == same3Num)) && (playerC.card2[1] == j))
+                    if (((playerC.card1[0] == same2Num) || (playerC.card1[0] == same3Num)) && (playerC.card1[1] == j))
                     {
                         highestHandCard[0] = playerC.card2[0];
                         highestHandCard[1] = playerC.card2[1];
                     }
-                    else if (((playerC.card1[0] == same2Num) || (playerC.card1[0] == same3Num)) && (playerC.card1[1] == j))
+                    else if (((playerC.card2[0] == same2Num) || (playerC.card2[0] == same3Num)) && (playerC.card2[1] == j))
                     {
                         highestHandCard[0] = playerC.card1[0];
                         highestHandCard[1] = playerC.card1[1];
@@ -272,12 +284,12 @@ public class PokerGame : MonoBehaviour
                 }
                 else
                 {
-                    if (((playerC.card1[0] == same2Num) || (playerC.card1[0] == same3Num)) && (playerC.card1[1] == j))
+                    if (((playerC.card2[0] == same2Num) || (playerC.card2[0] == same3Num)) && (playerC.card2[1] == j))
                     {
                         highestHandCard[0] = playerC.card1[0];
                         highestHandCard[1] = playerC.card1[1];
                     }
-                    else if (((playerC.card2[0] == same2Num) || (playerC.card2[0] == same3Num)) && (playerC.card2[1] == j))
+                    else if (((playerC.card1[0] == same2Num) || (playerC.card1[0] == same3Num)) && (playerC.card1[1] == j))
                     {
                         highestHandCard[0] = playerC.card2[0];
                         highestHandCard[1] = playerC.card2[1];
@@ -292,7 +304,7 @@ public class PokerGame : MonoBehaviour
         //Flush
         int endPoint = -1;
         int flushNum = 0;
-        for(int i = 0; i < 4; i++)
+        for (int i = 3; i >= 0; i--)
         {
             for (int j = 0; j < 13; j++)
             {
@@ -306,19 +318,19 @@ public class PokerGame : MonoBehaviour
         }
         if (flushNum >= 4)
         {
-            if (playerC.card1[0] > playerC.card2[0])
+            if (playerC.card1[1] > playerC.card2[1])
             {
                 for(int i = endPoint; i > endPoint-5; i--)
                 {
-                    if (playerC.card2[1] == i)
-                    {
-                        highestHandCard[0] = playerC.card2[0];
-                        highestHandCard[1] = playerC.card2[1];
-                    }
-                    else if (playerC.card1[1] == i)
+                    if (playerC.card1[1] == i)
                     {
                         highestHandCard[0] = playerC.card1[0];
                         highestHandCard[1] = playerC.card1[1];
+                    }
+                    else if (playerC.card2[1] == i)
+                    {
+                        highestHandCard[0] = playerC.card2[0];
+                        highestHandCard[1] = playerC.card2[1];
                     }
                 }
             }
@@ -337,7 +349,24 @@ public class PokerGame : MonoBehaviour
                 try
                 {
                     if (cardNums[j + 1] > 0)
+                    {
                         straightNum++;
+
+                        if (straightNum >= 4)
+                        {
+                            for (int i = 3; i >= 0; i--)
+                            {
+                                if(curCard[i, j + 1] == 1)
+                                {
+                                    highestHandCard[0] = i;
+                                    highestHandCard[1] = j + 1;
+                                    break;
+                                }
+                            }
+
+                        }
+                    }
+
                     else
                         straightNum = 0;
                 }
@@ -357,30 +386,30 @@ public class PokerGame : MonoBehaviour
         {
             if (cardNums[i] == 3)
             {
-                if (playerC.card1[0] > playerC.card2[0])
+                if (playerC.card1[1] > playerC.card2[1])
                 {
-                    if (playerC.card2[1] == i)
-                    {
-                        highestHandCard[0] = playerC.card2[0];
-                        highestHandCard[1] = playerC.card2[1];
-                    }
-                    else if (playerC.card1[1] == i)
+                    if (playerC.card1[1] == i)
                     {
                         highestHandCard[0] = playerC.card1[0];
                         highestHandCard[1] = playerC.card1[1];
+                    }
+                    else if (playerC.card2[1] == i)
+                    {
+                        highestHandCard[0] = playerC.card2[0];
+                        highestHandCard[1] = playerC.card2[1];
                     }
                 }
                 else
                 {
-                    if ((playerC.card1[1] == i))
-                    {
-                        highestHandCard[0] = playerC.card1[0];
-                        highestHandCard[1] = playerC.card1[1];
-                    }
-                    else if ((playerC.card2[1] == i))
+                    if ((playerC.card2[1] == i))
                     {
                         highestHandCard[0] = playerC.card2[0];
                         highestHandCard[1] = playerC.card2[1];
+                    }
+                    else if ((playerC.card1[1] == i))
+                    {
+                        highestHandCard[0] = playerC.card1[0];
+                        highestHandCard[1] = playerC.card1[1];
                     }
                 }
                 return HAND.THREE_KIND;
@@ -411,20 +440,7 @@ public class PokerGame : MonoBehaviour
                     curIndex++;
                 }
             }
-            if (playerC.card1[0] > playerC.card2[0])
-            {
-                if ((playerC.card2[1] == pairsNum[0]) || (playerC.card2[1] == pairsNum[1]))
-                {
-                    highestHandCard[0] = playerC.card2[0];
-                    highestHandCard[1] = playerC.card2[1];
-                }
-                else if ((playerC.card1[1] == pairsNum[0]) || (playerC.card1[1] == pairsNum[1]))
-                {
-                    highestHandCard[0] = playerC.card1[0];
-                    highestHandCard[1] = playerC.card1[1];
-                }
-            }
-            else
+            if (playerC.card1[1] > playerC.card2[1])
             {
                 if ((playerC.card1[1] == pairsNum[0]) || (playerC.card1[1] == pairsNum[1]))
                 {
@@ -435,6 +451,19 @@ public class PokerGame : MonoBehaviour
                 {
                     highestHandCard[0] = playerC.card2[0];
                     highestHandCard[1] = playerC.card2[1];
+                }
+            }
+            else
+            {
+                if ((playerC.card2[1] == pairsNum[0]) || (playerC.card2[1] == pairsNum[1]))
+                {
+                    highestHandCard[0] = playerC.card2[0];
+                    highestHandCard[1] = playerC.card2[1];
+                }
+                else if ((playerC.card1[1] == pairsNum[0]) || (playerC.card1[1] == pairsNum[1]))
+                {
+                    highestHandCard[0] = playerC.card1[0];
+                    highestHandCard[1] = playerC.card1[1];
                 }
             }
             return HAND.TWO_PAIR;
@@ -451,20 +480,7 @@ public class PokerGame : MonoBehaviour
                     break;
                 }
             }
-            if (playerC.card1[0] > playerC.card2[0])
-            {
-                if (playerC.card2[1] == pairNum)
-                {
-                    highestHandCard[0] = playerC.card2[0];
-                    highestHandCard[1] = playerC.card2[1];
-                }
-                else if (playerC.card1[1] == pairNum)
-                {
-                    highestHandCard[0] = playerC.card1[0];
-                    highestHandCard[1] = playerC.card1[1];
-                }
-            }
-            else
+            if (playerC.card1[1] > playerC.card2[1])
             {
                 if (playerC.card1[1] == pairNum)
                 {
@@ -477,10 +493,23 @@ public class PokerGame : MonoBehaviour
                     highestHandCard[1] = playerC.card2[1];
                 }
             }
+            else
+            {
+                if (playerC.card2[1] == pairNum)
+                {
+                    highestHandCard[0] = playerC.card2[0];
+                    highestHandCard[1] = playerC.card2[1];
+                }
+                else if (playerC.card1[1] == pairNum)
+                {
+                    highestHandCard[0] = playerC.card1[0];
+                    highestHandCard[1] = playerC.card1[1];
+                }
+            }
             return HAND.PAIR; 
         }
 
-        if (playerC.card1[0] > playerC.card2[0])
+        if (playerC.card1[1] > playerC.card2[1])
         {
             highestHandCard[0] = playerC.card1[0];
             highestHandCard[1] = playerC.card1[1];
