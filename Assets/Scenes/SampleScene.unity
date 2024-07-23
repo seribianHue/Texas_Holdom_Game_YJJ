@@ -1982,7 +1982,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cardPrefabs: {fileID: 11400000, guid: d94f73e44ceee51498831742311420fc, type: 2}
-  playerNum: 8
+  playerNum: 1
   cardPlaces:
   - {fileID: 1814626897}
   - {fileID: 2104239546}

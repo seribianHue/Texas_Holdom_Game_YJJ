@@ -1,10 +1,72 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 
+
+class Card : IEquatable<Card>
+{
+    public enum SUIT { SPADE, HEART, DIAMOND, CLOVER };
+
+    SUIT suit;
+    public SUIT Suit
+    {
+        get { return suit; }
+    }
+    int no;
+    public int NO 
+    {
+        get { return no; }
+    }
+        
+    public Card(SUIT suit, int no)
+    {
+        this.suit = suit;
+        this.no = no;
+    }
+
+    public bool Equals(Card other)
+    {
+        if (this is null) return false;
+        if (other is null) return false;
+        if(ReferenceEquals(this, other)) return true;
+        return (this.suit == other.suit) && (this.no == other.no);
+    }
+
+}
+
+
 public class PokerGame : MonoBehaviour
 {
+    const int MAXCARDNUM = 52;
+    List<Card> Deck = new List<Card>();
+    //Card[] Deck = new Card[MAXCARDNUM];
+
+    void InitDeck()
+    {
+        for(Card.SUIT suit = Card.SUIT.SPADE; suit <= Card.SUIT.CLOVER; suit++)
+        {
+            for(int i = 0; i < 13; i++)
+            {
+                Deck.Add(new Card(suit, i + 2));
+            }
+        }
+    }
+
+    Card[] GetRandCards(int numCard)
+    {
+        Card[] cards = new Card[numCard];
+        for (int n = 0; n < numCard; n++)
+        {
+            int ranIndex = UnityEngine.Random.Range(0, Deck.Count);
+            cards[n] = Deck[ranIndex];
+            Deck.Remove(Deck[ranIndex]);
+        }
+        return cards;
+    }
+
     int[,] PokerCardDeck = new int[4, 13];
     int[,] GetRandCard(int[,] pockerCardDeck, int numCard)
     {
@@ -16,8 +78,8 @@ public class PokerGame : MonoBehaviour
             int suit, rank = 0;
             do
             {
-                suit = Random.Range(0, 4);
-                rank = Random.Range(0, 13);
+                suit = UnityEngine.Random.Range(0, 4);
+                rank = UnityEngine.Random.Range(0, 13);
                 if (pockerCardDeck[suit, rank] == 0)
                 {
                     isPossibleCard = true;
@@ -56,7 +118,32 @@ public class PokerGame : MonoBehaviour
         
     }
 
-    public int playerNum;
+    class PlayerInfo
+    {
+        Card card1;
+        public Card Card1
+        {
+            get { return card1; }
+        }
+        Card card2;
+        public Card Card2
+        {
+            get { return card2; }
+        }
+        public HAND playerHand;
+
+        public Card highestCard;
+
+        public PlayerInfo(Card card1, Card card2)
+        {
+            this.card1 = card1;
+            this.card2 = card2;
+        }
+    }
+
+    [SerializeField]
+    int playerNum;
+
     Player[] playerCards;
 
     int[,] ShareCards;
@@ -68,8 +155,33 @@ public class PokerGame : MonoBehaviour
 
     [SerializeField]
     TextMeshProUGUI[] playerHand;
+
+    Card[] communityCards;
+    PlayerInfo[] playersInfo;
     void Start()
     {
+        InitDeck();
+        communityCards = GetRandCards(10);
+
+        foreach (var card in communityCards)
+        {
+            print(card.Suit.ToString() + ", " + card.NO);
+        }
+
+        playersInfo = new PlayerInfo[playerNum];
+        for(int i = 0; i < playerNum; i++)
+        {
+            playersInfo[i] = new PlayerInfo(GetRandCards(1)[0], GetRandCards(1)[0]);
+        }
+
+        foreach (var player in playersInfo)
+        {
+            print(player.Card1.Suit.ToString() + ", " + player.Card1.NO);
+            print(player.Card2.Suit.ToString() + ", " + player.Card2.NO);
+        }
+
+        print(Find_Hand(playersInfo[0]).ToString());
+
 
         ShareCards = GetRandCard(PokerCardDeck, 5);
         for (int i = 0; i < ShareCards.GetLength(0); i++)
@@ -101,7 +213,7 @@ public class PokerGame : MonoBehaviour
             playerPlace[i].transform.GetChild(3).GetComponent<TextMeshPro>().text = playerCards[i].playerHand.ToString();
             if (playerCards[i].highestCard[0] != -1)
                 Instantiate(GetCardPrefab(playerCards[i].highestCard[0], playerCards[i].highestCard[1]), playerPlace[i].transform.GetChild(2));
-            
+            //Player[] highestPlayer = 
         }
     }
 
@@ -162,6 +274,7 @@ public class PokerGame : MonoBehaviour
                             highestHandCard[1] = j;
                         }
                     }
+                    break;
 
                 }
                 return HAND.ROYAL_FLUSH;
@@ -175,6 +288,8 @@ public class PokerGame : MonoBehaviour
         int count = 0;
         for (int i = 3; i >= 0; i--)
         {
+            if (count >= 4)
+                break;
             for (int j = 0; j < 13; j++)
             {
                 if (curCard[i, j] == 1)
@@ -188,6 +303,7 @@ public class PokerGame : MonoBehaviour
                             {
                                 highestHandCard[0] = i;
                                 highestHandCard[1] = j + 1;
+                                break;
                             }
                         }
                         else
@@ -267,33 +383,30 @@ public class PokerGame : MonoBehaviour
         }
         if (same3 && same2)
         {
-            for (int j = 0; j < 4; j++)
+            if (playerC.card1[1] > playerC.card2[1])
             {
-                if (playerC.card1[1] > playerC.card2[1])
+                if (((playerC.card1[1] == same2Num) || (playerC.card1[1] == same3Num)))
                 {
-                    if (((playerC.card1[0] == same2Num) || (playerC.card1[0] == same3Num)) && (playerC.card1[1] == j))
-                    {
-                        highestHandCard[0] = playerC.card2[0];
-                        highestHandCard[1] = playerC.card2[1];
-                    }
-                    else if (((playerC.card2[0] == same2Num) || (playerC.card2[0] == same3Num)) && (playerC.card2[1] == j))
-                    {
-                        highestHandCard[0] = playerC.card1[0];
-                        highestHandCard[1] = playerC.card1[1];
-                    }
+                    highestHandCard[0] = playerC.card2[0];
+                    highestHandCard[1] = playerC.card2[1];
                 }
-                else
+                else if (((playerC.card2[1] == same2Num) || (playerC.card2[1] == same3Num)))
                 {
-                    if (((playerC.card2[0] == same2Num) || (playerC.card2[0] == same3Num)) && (playerC.card2[1] == j))
-                    {
-                        highestHandCard[0] = playerC.card1[0];
-                        highestHandCard[1] = playerC.card1[1];
-                    }
-                    else if (((playerC.card1[0] == same2Num) || (playerC.card1[0] == same3Num)) && (playerC.card1[1] == j))
-                    {
-                        highestHandCard[0] = playerC.card2[0];
-                        highestHandCard[1] = playerC.card2[1];
-                    }
+                    highestHandCard[0] = playerC.card1[0];
+                    highestHandCard[1] = playerC.card1[1];
+                }
+            }
+            else
+            {
+                if (((playerC.card2[1] == same2Num) || (playerC.card2[1] == same3Num)))
+                {
+                    highestHandCard[0] = playerC.card1[0];
+                    highestHandCard[1] = playerC.card1[1];
+                }
+                else if (((playerC.card1[1] == same2Num) || (playerC.card1[1] == same3Num)))
+                {
+                    highestHandCard[0] = playerC.card2[0];
+                    highestHandCard[1] = playerC.card2[1];
                 }
             }
 
@@ -311,10 +424,16 @@ public class PokerGame : MonoBehaviour
                 if (curCard[i, j] == 1)
                 {
                     flushNum++;
-                    endPoint = j;
+                    if(flushNum >= 4)
+                    {
+                        endPoint = j;
+                        break;
+                    }
+
                 }
+                else
+                    flushNum = 0;
             }
-            flushNum = 0;
         }
         if (flushNum >= 4)
         {
@@ -351,22 +470,25 @@ public class PokerGame : MonoBehaviour
                     if (cardNums[j + 1] > 0)
                     {
                         straightNum++;
-
                         if (straightNum >= 4)
                         {
-                            for (int i = 3; i >= 0; i--)
+                            if(playerC.card1[1] == j + 1)
                             {
-                                if(curCard[i, j + 1] == 1)
-                                {
-                                    highestHandCard[0] = i;
-                                    highestHandCard[1] = j + 1;
-                                    break;
-                                }
+                                highestHandCard[0] = playerC.card1[0];
+                                highestHandCard[1] = playerC.card1[1];
+                                return HAND.STRAIGHT;
+
                             }
+                            else if (playerC.card2[1] == j + 1)
+                            {
+                                highestHandCard[0] = playerC.card2[0];
+                                highestHandCard[1] = playerC.card2[0];
+                                return HAND.STRAIGHT;
+                            }
+
 
                         }
                     }
-
                     else
                         straightNum = 0;
                 }
@@ -378,8 +500,6 @@ public class PokerGame : MonoBehaviour
             else
                 straightNum = 0;
         }
-        if (straightNum >= 4)
-            return HAND.STRAIGHT;
 
         //Three of a Kind
         for(int i = 0; i < 13; i++)
@@ -523,6 +643,168 @@ public class PokerGame : MonoBehaviour
 
     }
 
+    HAND Find_Hand(PlayerInfo playerC)
+    {
+        List<Card> cards = new List<Card>();
+        for (int i = 0; i < communityCards.Length; i++)
+        {
+            cards.Add(communityCards[i]);
+        }
+        cards.Add(playerC.Card1);
+        cards.Add(playerC.Card2);
 
+        if (isRoyalFlush(cards))
+            return HAND.ROYAL_FLUSH;
+        else if (isStraightFlush(cards))
+            return HAND.STRAIGHT_FLUSH;
+        else if (isFourKind(cards))
+            return HAND.FOUR_KIND;
+        else if (isFullHouse(cards))
+            return HAND.FUll_HOUSE;
+        else if (isFlush(cards))
+            return HAND.FLUSH;
+        else if (isStraight(cards))
+            return HAND.STRAIGHT;
+        else if (isThreeeKind(cards))
+            return HAND.THREE_KIND;
+        else if (isTwoPair(cards))
+            return HAND.TWO_PAIR;
+        else if (isPair(cards))
+            return HAND.PAIR;
+        else
+            return HAND.HIGH_CARD;
+    }
 
+    bool isRoyalFlush(List<Card> cards)
+    {
+        cards.Sort((c1, c2) => c1.NO.CompareTo(c2.NO));
+
+                  
+        for (Card.SUIT suit = Card.SUIT.SPADE; suit <= Card.SUIT.CLOVER; suit++)
+        {
+            List<Card> sameSuit = cards.FindAll(c => c.Suit == suit);
+
+            if ((sameSuit.Count >= 5) && (sameSuit[0].NO == 10) && (sameSuit[4].NO == 14))
+            {
+                return true;
+            }
+
+            /*
+            for (int i = 0; i < sameSuit.Count - 4; i++)
+            {
+                if ((sameSuit[i].NO == 10) && (sameSuit[i + 4].NO == 14))
+                {
+                    return true;
+                }
+            }
+            */
+        }
+        return false;
+    }
+
+    bool isStraightFlush(List<Card> cards)
+    {
+        cards.Sort((c1, c2) => c1.NO.CompareTo(c2.NO));
+
+        for (Card.SUIT suit = Card.SUIT.SPADE; suit <= Card.SUIT.CLOVER; suit++)
+        {
+            List<Card> sameSuit = cards.FindAll(c => c.Suit == suit);
+
+            if((sameSuit.Count >= 5) && (sameSuit[0].NO + 4 == sameSuit[4].NO))
+                { return true; }
+            //여기부터
+
+/*            for (int i = 0; i < sameSuit.Count - 4; i++)
+            {
+                if (sameSuit[i + 4].NO == sameSuit[i].NO + 4)
+                {
+                    return true;
+                }
+            }*/
+        }
+        return false;
+    }
+
+    bool isFourKind(List<Card> cards)
+    {
+        for (int i = 0; i < 13; i++)
+        {
+            List<Card> sameNum = cards.FindAll(c => c.NO == i + 2);
+            if(sameNum.Count >= 4) { return true; }
+        }
+        return false;
+    }
+
+    bool isFullHouse(List<Card> cards)
+    {
+        bool is3 = false;
+        bool is2 = false;
+        for (int i = 0; i < 13; i++)
+        {
+            List<Card> sameNum = cards.FindAll(c => c.NO == i + 2);
+            if (sameNum.Count >= 3) { is3 = true; }
+            else if (sameNum.Count == 2) { is2 = true; }
+        }
+        if(is3 && is2) {  return true; }
+        else {  return false; }
+    }
+
+    bool isFlush(List<Card> cards)
+    {
+        for (Card.SUIT suit = Card.SUIT.SPADE; suit <= Card.SUIT.CLOVER; suit++)
+        {
+            List<Card> sameSuit = cards.FindAll(c => c.Suit == suit);
+            if(sameSuit.Count >= 5) { return true; }
+        }
+        return false;
+    }
+
+    bool isStraight(List<Card> cards)
+    {
+        int[] cardsNum = new int[13];
+        for (int i = 0; i < cards.Count; i++)
+            cardsNum[cards[i].NO - 2]++;
+
+        for (int i = 0; i < cardsNum.Length - 4; i++)
+        {
+            if ((cardsNum[i] > 0) && (cardsNum[i + 1] > 0) && (cardsNum[i + 2] > 0)
+                && (cardsNum[i + 3] > 0) && (cardsNum[i + 4] > 0))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool isThreeeKind(List<Card> cards)
+    {
+        for (int i = 0; i < 13; i++)
+        {
+            List<Card> sameNum = cards.FindAll(c => c.NO == i + 2);
+            if (sameNum.Count >= 3) { return true; }
+        }
+        return false;
+    }
+
+    bool isTwoPair(List<Card> cards)
+    {
+        int pair = 0;
+        for (int i = 0; i < 13; i++)
+        {
+            List<Card> sameNum = cards.FindAll(c => c.NO == i + 2);
+            if (sameNum.Count >= 2) { pair++; }
+        }
+        if(pair >= 2) { return true; }
+        else { return false; }
+    }
+
+    bool isPair(List<Card> cards)
+    {
+        for (int i = 0; i < 13; i++)
+        {
+            List<Card> sameNum = cards.FindAll(c => c.NO == i + 2);
+            if (sameNum.Count >= 2) { return true; }
+        }
+        return false;
+    }
 }
