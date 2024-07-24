@@ -180,7 +180,7 @@ public class PokerGame : MonoBehaviour
             print(player.Card2.Suit.ToString() + ", " + player.Card2.NO);
         }
 
-        print(Find_Hand(playersInfo[0]).ToString());
+        print(playersInfo[0].playerHand.ToString());
 
 
         ShareCards = GetRandCard(PokerCardDeck, 5);
@@ -643,36 +643,36 @@ public class PokerGame : MonoBehaviour
 
     }
 
-    HAND Find_Hand(PlayerInfo playerC)
+    void Find_Hand(PlayerInfo player)
     {
         List<Card> cards = new List<Card>();
         for (int i = 0; i < communityCards.Length; i++)
         {
             cards.Add(communityCards[i]);
         }
-        cards.Add(playerC.Card1);
-        cards.Add(playerC.Card2);
+        cards.Add(player.Card1);
+        cards.Add(player.Card2);
 
         if (isRoyalFlush(cards))
-            return HAND.ROYAL_FLUSH;
+            player.playerHand = HAND.ROYAL_FLUSH;
         else if (isStraightFlush(cards))
-            return HAND.STRAIGHT_FLUSH;
+            player.playerHand = HAND.STRAIGHT_FLUSH;
         else if (isFourKind(cards))
-            return HAND.FOUR_KIND;
+            player.playerHand = HAND.FOUR_KIND;
         else if (isFullHouse(cards))
-            return HAND.FUll_HOUSE;
+            player.playerHand = HAND.FUll_HOUSE;
         else if (isFlush(cards))
-            return HAND.FLUSH;
+            player.playerHand = HAND.FLUSH;
         else if (isStraight(cards))
-            return HAND.STRAIGHT;
+            player.playerHand = HAND.STRAIGHT;
         else if (isThreeeKind(cards))
-            return HAND.THREE_KIND;
+            player.playerHand = HAND.THREE_KIND;
         else if (isTwoPair(cards))
-            return HAND.TWO_PAIR;
+            player.playerHand = HAND.TWO_PAIR;
         else if (isPair(cards))
-            return HAND.PAIR;
+            player.playerHand = HAND.PAIR;
         else
-            return HAND.HIGH_CARD;
+            player.playerHand = HAND.HIGH_CARD;
     }
 
     bool isRoyalFlush(List<Card> cards)
@@ -684,7 +684,7 @@ public class PokerGame : MonoBehaviour
         {
             List<Card> sameSuit = cards.FindAll(c => c.Suit == suit);
 
-            if ((sameSuit.Count >= 5) && (sameSuit[0].NO == 10) && (sameSuit[4].NO == 14))
+            if ((sameSuit.Count >= 5) && (sameSuit[sameSuit.Count - 5].NO == 10) && (sameSuit[sameSuit.Count - 1].NO == 14))
             {
                 return true;
             }
@@ -709,18 +709,13 @@ public class PokerGame : MonoBehaviour
         for (Card.SUIT suit = Card.SUIT.SPADE; suit <= Card.SUIT.CLOVER; suit++)
         {
             List<Card> sameSuit = cards.FindAll(c => c.Suit == suit);
-
-            if((sameSuit.Count >= 5) && (sameSuit[0].NO + 4 == sameSuit[4].NO))
-                { return true; }
-            //여기부터
-
-/*            for (int i = 0; i < sameSuit.Count - 4; i++)
+            for (int i = 0; i < sameSuit.Count - 4; i++)
             {
                 if (sameSuit[i + 4].NO == sameSuit[i].NO + 4)
                 {
                     return true;
                 }
-            }*/
+            }
         }
         return false;
     }
@@ -806,5 +801,31 @@ public class PokerGame : MonoBehaviour
             if (sameNum.Count >= 2) { return true; }
         }
         return false;
+    }
+
+    void FindHighestCard(List<Card> cards, PlayerInfo player)
+    {
+        Card involvedCard1 = null;
+        Card involvedCard2 = null;
+        foreach (Card card in cards)
+        {
+            if (card == player.Card1)
+            {
+                involvedCard1 = card;
+            }
+            if (card == player.Card2)
+            {
+                involvedCard2 = card;
+            }
+        }
+
+        if (player.Card1.NO > player.Card2.NO)
+        {
+            player.highestCard = involvedCard1 is null ? involvedCard1 : involvedCard2;
+        }
+        else
+        {
+            player.highestCard = involvedCard2 is null ? involvedCard2 : involvedCard1;
+        }
     }
 }
