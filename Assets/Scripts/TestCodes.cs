@@ -12,8 +12,8 @@ public class TestCodes : MonoBehaviour
         string cardString = "";
         for(int i = 0; i < 10; i++)
         {
-            Card c = new Card(Card.SUIT.SPADE, Random.Range(2, 15));
-            cards.Add(c);
+            //Card c = new Card(Card.SUIT.SPADE, Random.Range(2, 15));
+            //cards.Add(c);
         }
 
         cards = cards.OrderBy(c => c.NO).ToList();
