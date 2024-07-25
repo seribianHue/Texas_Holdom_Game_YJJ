@@ -4,6 +4,8 @@ using UnityEngine.Assertions;
 using Unity.Collections;
 using Unity.Networking.Transport;
 using System.IO;
+using System;
+using System.Text;
 
 public class ClientBehaviour : MonoBehaviour
 {
@@ -61,14 +63,14 @@ public class ClientBehaviour : MonoBehaviour
 
 
     public bool isClientCreated;
-    public void CreateClient()
+    public void CreateClient(string port)
     {
         m_Driver = NetworkDriver.Create();
         m_Connection = default(NetworkConnection);
 
         //loopback ipv4 = 자기 자신 지칭 ip 127.0.0.1 (로컬에서 서버 설정시 유용, 외부 네트워크 사용하지 않고 테스트 가능)
         var endpoint = NetworkEndpoint.LoopbackIpv4;
-        endpoint.Port = 9000;
+        endpoint.Port = ushort.Parse(port.AsSpan());
         m_Connection = m_Driver.Connect(endpoint);
         isClientCreated = true;
     }
@@ -78,6 +80,25 @@ public class ClientBehaviour : MonoBehaviour
         uint value = stream.ReadUInt();
         Debug.Log("Got the value = " + value + " back from the server");
         return value;
+    }
+
+    public void SendPacket(int type, string data)
+    {
+        Packet packet = new Packet(type, data);
+
+        m_Driver.BeginSend(m_Connection, out var writer);
+        writer.WriteBytes(packet.TotalData.ToNativeArray(Allocator.Persistent));
+        m_Driver.EndSend(writer);
+    }
+
+    public void RecievePacket(DataStreamReader stream)
+    {
+        NativeArray<byte> data = new NativeArray<byte>();
+        stream.ReadBytes(data);
+
+        int type = ((data[7] << 24) + (data[6] << 16) + (data[5] << 8) + (data[4]));
+        string strData = Encoding.UTF8.GetString(data.Slice(8, data.Length - 1).ToArray());
+        print(strData);
     }
 
 
@@ -96,3 +117,5 @@ public class ClientBehaviour : MonoBehaviour
         m_Connection = default(NetworkConnection);
     }
 }
+
+

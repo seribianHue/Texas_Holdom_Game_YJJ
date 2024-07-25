@@ -5,6 +5,9 @@ using Unity.Collections;
 using Unity.Networking.Transport;
 using Unity.VisualScripting;
 using System.IO;
+using System;
+using System.Text;
+using System.Collections.Generic;
 
 public class ServerBehaviour : MonoBehaviour
 {
@@ -67,10 +70,12 @@ public class ServerBehaviour : MonoBehaviour
                     //그 이벤트가 Data 이벤트면
                     if(cmd == NetworkEvent.Type.Data)
                     {
-                        uint recievedNum = RecievedUintData(stream);
+                        RecievePacket(stream);
+
+/*                        uint recievedNum = RecievedUintData(stream);
                         recievedNum += 2;
 
-                        SendUint(recievedNum, m_Connections[i]);
+                        SendUint(recievedNum, m_Connections[i]);*/
 
 /*
                         //stream에서 uint받아서 받았다는 것을 표시
@@ -97,14 +102,14 @@ public class ServerBehaviour : MonoBehaviour
     }
 
     public bool isServerCreated;
-    public void CreatServer()
+    public void CreatServer(string port)
     {
         m_Driver = NetworkDriver.Create();
         var endpoint = NetworkEndpoint.AnyIpv4;
-        endpoint.Port = 9000;
+        endpoint.Port = ushort.Parse(port.AsSpan());
         //서버 주소 할당 bind 성공시 0 실패시 -1
         if (m_Driver.Bind(endpoint) != 0)
-            Debug.Log("Failed to bind to port 9000");
+            Debug.Log("Failed to bind to port " + port);
         else
             m_Driver.Listen();
 
@@ -119,8 +124,34 @@ public class ServerBehaviour : MonoBehaviour
         //데이터를 보내려면 DataStreamWriter 필요, 이는 BeginSend를 호출해 얻는다
         m_Driver.BeginSend(NetworkPipeline.Null, network, out var writer);
         writer.WriteUInt(num);
+
+        //writer가 다 byte로 저장된다.
+        print(writer.Length);
+
+        //writer.WriteBytes();
+
         //전송 완료!
         m_Driver.EndSend(writer);
+    }
+
+    public void SendPacket(int type, string data, NetworkConnection network)
+    {
+        Packet packet = new Packet(type, data);
+
+        m_Driver.BeginSend(NetworkPipeline.Null, network, out var writer);
+        writer.WriteBytes(packet.TotalData.ToNativeArray(Allocator.Persistent));
+
+        m_Driver.EndSend(writer);
+    }
+
+    public void RecievePacket(DataStreamReader stream)
+    {
+        NativeArray<byte> data = new NativeArray<byte>();
+        stream.ReadBytes(data);
+
+        int type = ((data[7] << 24) + (data[6] << 16) + (data[5] << 8) + (data[4]));
+        string strData = Encoding.UTF8.GetString(data.Slice(8, data.Length - 1).ToArray());
+        print(strData);
     }
 
     public uint RecievedUintData(DataStreamReader stream)
@@ -130,6 +161,28 @@ public class ServerBehaviour : MonoBehaviour
         Debug.Log("Got " + number + " from the Client adding + 2 to it");
 
         return number;
+    }
+}
+
+public struct Packet
+{
+    int Length;
+    int Type;
+    string Data;
+    public List<byte> TotalData;
+
+    public Packet(int type, string data)
+    {
+        Type = type; 
+        Data = data;
+        Length = 1 + Data.Length;
+
+        TotalData = new List<byte>();
+        TotalData.AddRange(BitConverter.GetBytes(Length));
+        TotalData.AddRange(BitConverter.GetBytes(Type));
+        TotalData.AddRange(Encoding.UTF8.GetBytes(Data));
+
+        NativeArray<byte> natd = TotalData.ToNativeArray<byte>(Allocator.Persistent);
     }
 }
 

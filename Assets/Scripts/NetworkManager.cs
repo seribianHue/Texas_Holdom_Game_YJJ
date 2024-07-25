@@ -15,14 +15,19 @@ public class NetworkManager : MonoBehaviour
     [SerializeField]
     TMP_InputField IPinputF;
 
+    public string PortNum;
+    [SerializeField]
+    TMP_InputField PortinputF;
+
     public void CreateServer()
     {
-        m_Server.CreatServer();
+        m_Server.CreatServer(PortNum);
     }
 
     public void CreateClient()
     {
-        m_Client.CreateClient();
+        m_Client.CreateClient(PortNum);
+        m_Client.SendPacket(0, nickName);
     }
     void Start()
     {
@@ -38,5 +43,10 @@ public class NetworkManager : MonoBehaviour
     public void SetNickName(string nickName)
     {
         this.nickName = nickName;
+    }
+
+    public void SetPortNum(string port)
+    {
+        PortNum = port;
     }
 }
