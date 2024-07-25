@@ -54,6 +54,12 @@ public enum HAND
 
 public class PlayerInfo
 {
+    string player;
+    public string Player
+    {
+        get { return player; }
+    }
+
     Card card1;
     public Card Card1
     {
@@ -68,8 +74,9 @@ public class PlayerInfo
 
     public Card highestCard;
 
-    public PlayerInfo(Card card1, Card card2)
+    public PlayerInfo(string player, Card card1, Card card2)
     {
+        this.player = player;
         this.card1 = card1;
         this.card2 = card2;
     }
@@ -133,6 +140,10 @@ public class PokerGame : MonoBehaviour
 
     Card[] communityCards;
     PlayerInfo[] playersInfo;
+
+    PlayerInfo winner;
+    [SerializeField]
+    TextMeshProUGUI winnerText;
     void Start()
     {
         InitDeck();
@@ -146,7 +157,7 @@ public class PokerGame : MonoBehaviour
         playersInfo = new PlayerInfo[playerNum];
         for(int i = 0; i < playerNum; i++)
         {
-            playersInfo[i] = new PlayerInfo(GetRandCards(1)[0], GetRandCards(1)[0]);
+            playersInfo[i] = new PlayerInfo((i+ 1).ToString(), GetRandCards(1)[0], GetRandCards(1)[0]);
             playersInfo[i].Card1.IsCommunity = false;
             playersInfo[i].Card2.IsCommunity = false;
             Find_Hand3(playersInfo[i]);
@@ -159,12 +170,25 @@ public class PokerGame : MonoBehaviour
 
             //show player highest card
             GameObject cObjH = GetCardPrefab((int)playersInfo[i].highestCard.Suit, playersInfo[i].highestCard.NO - 2);
-            Instantiate(cObj2, playerPlace[i].transform.GetChild(2));
+            Instantiate(cObjH, playerPlace[i].transform.GetChild(2));
 
             //show player hand
             playerPlace[i].transform.GetChild(3).GetComponent<TextMeshPro>().text = playersInfo[i].playerHand.ToString();
         }
+
+        //winner
+        PlayerInfo[] winners = playersInfo.Where(n => n.playerHand == playersInfo.Min(x => x.playerHand)).ToArray();
+        if(winners.Length > 1)
+        {
+            winners = winners.OrderBy(c => c.highestCard.Suit).OrderByDescending(c => c.highestCard.NO).ToArray();
+            winner = winners[0];
+        }
+        else { winner = winners[0]; }
+        winnerText.text = "Winner : " + winner.Player;
+
     }
+
+    
 
 
 
@@ -187,7 +211,7 @@ public class PokerGame : MonoBehaviour
         {
             player.playerHand = handFlush;
         }
-        else if((handPair = Find_PairGroup(cards, out handCardsStrait)) <= HAND.FUll_HOUSE)
+        else if((handPair = Find_PairGroup(cards, out handCardsPair)) <= HAND.FUll_HOUSE)
         {
             player.playerHand = handPair;
         }
@@ -195,7 +219,7 @@ public class PokerGame : MonoBehaviour
         {
             player.playerHand = handFlush;
         }
-        else if(Find_Straight(cards, out handCardsPair) == HAND.STRAIGHT)
+        else if(Find_Straight(cards, out handCardsStrait) == HAND.STRAIGHT)
         {
             player.playerHand = HAND.STRAIGHT;
         }
@@ -221,14 +245,13 @@ public class PokerGame : MonoBehaviour
     Card Find_PlayerInvolvedCard(List<Card> cards, PlayerInfo player)
     {
         Card playerCard;
-        cards = cards.OrderByDescending(c => c.Suit).OrderByDescending(c => c.NO).ToList();
+        cards = cards.OrderBy(c => c.Suit).OrderByDescending(c => c.NO).ToList();
         foreach (Card card in cards)
         {
             if (!card.IsCommunity)
             {
                 playerCard = card;
                 return playerCard;
-
             }
         }
         if(player.Card1.NO > player.Card2.NO)
@@ -239,7 +262,7 @@ public class PokerGame : MonoBehaviour
             return player.Card2;
         else
         {
-            if(player.Card1.Suit < player.Card2.Suit)
+            if(player.Card1.Suit > player.Card2.Suit)
                 return player.Card1;
             else
                 return player.Card2;
@@ -263,7 +286,9 @@ public class PokerGame : MonoBehaviour
                 else if (sameSuit.Zip(sameSuit.Skip(4), (a, b) => a.NO + 4 == b.NO ? a : null).Where(n => n != null).Count() >= 1)
                 {
                     Card firstCard = sameSuit.Zip(sameSuit.Skip(4), (a, b) => a.NO + 4 == b.NO ? a : null).Where(n => n != null).Last();
-                    handCards = sameSuitList.Skip(sameSuitList.IndexOf(firstCard)).ToList();
+                    //handCards = sameSuitList.Skip(sameSuitList.IndexOf(firstCard)).ToList();
+                    handCards = sameSuitList.GetRange(sameSuitList.IndexOf(firstCard), 5);
+
                     return HAND.STRAIGHT_FLUSH;
                 }
                 else
@@ -288,7 +313,9 @@ public class PokerGame : MonoBehaviour
         if (continous.Count >= 1)
         {
             Card firstCard = continous.Last();
-            handCards = cards.Skip(cards.IndexOf(firstCard)).ToList();
+            Card lastCard = cards.Where(n => n.NO == firstCard.NO).FirstOrDefault();
+            //handCards = cards.Skip(cards.IndexOf(firstCard)).ToList();
+            handCards = cards.GetRange(cards.IndexOf(firstCard), cards.IndexOf(lastCard));
             return HAND.STRAIGHT;
         }
         handCards = null;
