@@ -8,7 +8,6 @@ using System;
 using System.Text;
 using System.Collections.Generic;
 using Unity.Collections;
-using UnityEditor.Experimental.GraphView;
 
 public class Client
 {
@@ -29,7 +28,7 @@ public class ServerBehaviour : MonoBehaviour
 
     public string port;
 
-    Client[] clientList = new Client[7];
+    public Client[] clientList = new Client[7];
 
     void Start()
     {
@@ -78,19 +77,17 @@ public class ServerBehaviour : MonoBehaviour
             {
                 if (cmd == NetworkEvent.Type.Data)
                 {
-                    uint number = stream.ReadUInt();
-                    Debug.Log("Got " + number + " from the Client adding + 2 to it");
-
-                    number += 2;
-                    m_Driver.BeginSend(NetworkPipeline.Null, m_Connections[i], out var writer);
-                    writer.WriteUInt(number);
-                    m_Driver.EndSend(writer);
-
                     switch (stream.ReadUInt())
                     {
                         case 0:
                             {
-                                clientList[i] = new Client(stream.ReadFixedString128().ToString(), m_Connections[i]); 
+                                clientList[i] = new Client(stream.ReadFixedString128().ToString(), m_Connections[i]);
+                                
+                                print("New Player at " + i + ", " + clientList[i].nickName);
+                                GameManager.Instance.AddPlayer();
+                                
+                                string data = i.ToString() + clientList[i].nickName;
+                                SendAck(0, data);
                                 break;
                             }
                     }
@@ -133,11 +130,57 @@ public class ServerBehaviour : MonoBehaviour
                     //new Player Broadcast
                     for (int i = 0; i < clientList.Length; i++)
                     {
+                        if(clientList[i] != null)
+                        {
+                            DataStreamWriter writer3;
+                            m_Driver.BeginSend(m_Connections[i], out writer3);
+                            writer3.WriteUInt((uint)type);
+                            writer3.WriteFixedString128(data);
+                            m_Driver.EndSend(writer3);
+                            
+                        }
 
                     }
                     break;
                 }
 
+            case 2:
+                {
+                    //GameStart Broadcast
+                    for (int i = 0; i < clientList.Length; i++)
+                    {
+                        if (clientList[i] != null)
+                        {
+                            DataStreamWriter writer;
+                            m_Driver.BeginSend(m_Connections[i], out writer);
+                            writer.WriteUInt((uint)type);
+                            m_Driver.EndSend(writer);
+                        }
+                    }
+                    GameManager.Instance.GameStart();
+                    GameManager.Instance.SetMyInfoServer(0);
+                    break;
+                }
+
+            case 3:
+                {
+                    //Card Distribute
+                    for (int i = 0; i < clientList.Length; i++)
+                    {
+                        if (clientList[i] != null)
+                        {
+                            DataStreamWriter writer;
+                            m_Driver.BeginSend(m_Connections[i], out writer);
+                            writer.WriteUInt((uint)type);
+                            writer.WriteUInt((uint)GameManager.Instance.pokergame.playersInfo[i + 1].Card1.Suit);
+                            writer.WriteUInt((uint)GameManager.Instance.pokergame.playersInfo[i + 1].Card1.NO);
+                            writer.WriteUInt((uint)GameManager.Instance.pokergame.playersInfo[i + 1].Card2.Suit);
+                            writer.WriteUInt((uint)GameManager.Instance.pokergame.playersInfo[i + 1].Card2.NO);
+                            m_Driver.EndSend(writer);
+                        }
+                    }
+                    break;
+                }
         }
     }
 }

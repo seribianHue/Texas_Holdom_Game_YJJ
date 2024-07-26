@@ -6,9 +6,7 @@ using Unity.Networking.Transport;
 using System.IO;
 using System;
 using System.Text;
-using UnityEngine.XR;
 using Unity.VisualScripting;
-using UnityEditor.Experimental.GraphView;
 
 public class ClientBehaviour : MonoBehaviour
 {
@@ -17,6 +15,9 @@ public class ClientBehaviour : MonoBehaviour
     public bool Done;
 
     public string port;
+
+    public string nickName;
+    public int myPos;
 
     void Start()
     {
@@ -49,17 +50,41 @@ public class ClientBehaviour : MonoBehaviour
             if (cmd == NetworkEvent.Type.Connect)
             {
                 Debug.Log("We are now connected to the server");
-                uint value = 2;
-                m_Driver.BeginSend(m_Connection, out var writer);
-                writer.WriteUInt(value);
-                m_Driver.EndSend(writer);
 
-
+                SendReq(0, nickName);
             }
             else if (cmd == NetworkEvent.Type.Data)
             {
-                uint value = stream.ReadUInt();
-                Debug.Log("Got the value = " + value + " back from the server");
+                switch (stream.ReadUInt())
+                {
+                    case 0:
+                        {
+                            //int type = (int)stream.ReadUInt();
+                            string data = stream.ReadFixedString128().ToString();
+                            string pos = data.Substring(0, 1);
+                            string nickname = data.Substring(1);
+
+                            myPos = int.Parse(pos);
+
+                            if(nickname != this.nickName)
+                            {
+                                print("New Player at " + pos + ", " + nickname);
+                            }
+                            break;
+                        }
+                    case 2:
+                        {
+
+                            break;
+                        }
+                    case 3:
+                        {
+                            GameManager.Instance.SetMyInfoClient(nickName,
+                                (int)stream.ReadUInt(), (int)stream.ReadUInt(),  //card1
+                                (int)stream.ReadUInt(), (int)stream.ReadUInt()); //card2
+                            break;
+                        }
+                }
             }
             else if (cmd == NetworkEvent.Type.Disconnect)
             {

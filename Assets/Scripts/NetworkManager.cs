@@ -10,6 +10,7 @@ public class NetworkManager : MonoBehaviour
     [SerializeField] ClientBehaviour m_Client;
 
     public string nickName;
+    public int mypos;
     NetworkEndpoint m_network = NetworkEndpoint.LoopbackIpv4;
 
     [SerializeField]
@@ -24,12 +25,15 @@ public class NetworkManager : MonoBehaviour
     {
         GetComponent<ServerBehaviour>().port = PortNum;
         gameObject.GetComponent<ServerBehaviour>().enabled = true;
+        UIManager.Instance.SetLobbyUI(false);
     }
 
     public void CreateClient()
     {
         GetComponent<ClientBehaviour>().port = PortNum;
         gameObject.GetComponent<ClientBehaviour>().enabled = true;
+        UIManager.Instance.SetLobbyUI(false);
+
     }
     void Start()
     {
@@ -45,6 +49,8 @@ public class NetworkManager : MonoBehaviour
     public void SetNickName(string nickName)
     {
         this.nickName = nickName;
+        GetComponent<ClientBehaviour>().nickName = nickName;
+
     }
 
     public void SetPortNum(string port)
