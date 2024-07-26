@@ -19,15 +19,17 @@ public class NetworkManager : MonoBehaviour
     [SerializeField]
     TMP_InputField PortinputF;
 
+    
     public void CreateServer()
     {
-        m_Server.CreatServer(PortNum);
+        GetComponent<ServerBehaviour>().port = PortNum;
+        gameObject.GetComponent<ServerBehaviour>().enabled = true;
     }
 
     public void CreateClient()
     {
-        m_Client.CreateClient(PortNum);
-        m_Client.SendPacket(0, nickName);
+        GetComponent<ClientBehaviour>().port = PortNum;
+        gameObject.GetComponent<ClientBehaviour>().enabled = true;
     }
     void Start()
     {
