@@ -105,11 +105,30 @@ public class ClientBehaviour : MonoBehaviour
 
     public void SendReq(int type, string data)
     {
-        DataStreamWriter writer;
-        m_Driver.BeginSend(m_Connection, out writer);
-        writer.WriteUInt((uint)type);
-        writer.WriteFixedString128(data);
-        m_Driver.EndSend(writer);
+        switch (type)
+        {
+            case 0:
+                {
+                    DataStreamWriter writer;
+                    m_Driver.BeginSend(m_Connection, out writer);
+                    writer.WriteUInt((uint)type);
+                    writer.WriteFixedString128(data);
+                    m_Driver.EndSend(writer);
+                    break;
+                }
+            case 2:
+                {
+                    DataStreamWriter writer;
+                    m_Driver.BeginSend(m_Connection, out writer);
+                    writer.WriteUInt((uint)type);
+                    writer.WriteUInt((uint)myPos);
+                    writer.WriteUInt(uint.Parse(data));
+                    m_Driver.EndSend(writer);
+                    break;
+                }
+        }
+
+
     }
 
 }

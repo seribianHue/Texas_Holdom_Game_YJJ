@@ -79,6 +79,7 @@ public class ServerBehaviour : MonoBehaviour
                 {
                     switch (stream.ReadUInt())
                     {
+                        //New Player Enter
                         case 0:
                             {
                                 clientList[i] = new Client(stream.ReadFixedString128().ToString(), m_Connections[i]);
@@ -88,6 +89,12 @@ public class ServerBehaviour : MonoBehaviour
                                 
                                 string data = i.ToString() + clientList[i].nickName;
                                 SendAck(0, data);
+                                break;
+                            }
+                        //Fold Check recieve
+                        case 2:
+                            {
+
                                 break;
                             }
                     }

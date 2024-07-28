@@ -57,4 +57,9 @@ public class NetworkManager : MonoBehaviour
     {
         PortNum = port;
     }
+
+    public void SendServerFoldCheck(int i)
+    {
+        m_Client.SendReq(2, i.ToString());
+    }
 }

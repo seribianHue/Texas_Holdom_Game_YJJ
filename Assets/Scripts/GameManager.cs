@@ -61,6 +61,15 @@ public class GameManager : MonoBehaviour
         pokergame.ShowMyCard(myInfo, networkManager.mypos);
     }
 
+    public void SendServerFold()
+    {
+        networkManager.SendServerFoldCheck(0);
+    }
+    public void SendServerCheck()
+    {
+        networkManager.SendServerFoldCheck(1);
+    }
+
 
 
     // Start is called before the first frame update

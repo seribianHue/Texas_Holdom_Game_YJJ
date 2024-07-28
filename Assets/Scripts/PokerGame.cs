@@ -267,10 +267,10 @@ public class PokerGame : MonoBehaviour
         //show player card
         GameObject cObj1 = GetCardPrefab((int)myInfo.Card1.Suit, myInfo.Card1.NO - 2);
         GameObject cObj2 = GetCardPrefab((int)myInfo.Card2.Suit, myInfo.Card2.NO - 2);
-        Instantiate(cObj1, playerPlace[index + 2].transform.GetChild(0).position,
-             Quaternion.Euler(playerPlace[index + 2].transform.GetChild(0).rotation.eulerAngles));
-        Instantiate(cObj2, playerPlace[index + 2].transform.GetChild(1).position,
-            Quaternion.Euler(playerPlace[index + 2].transform.GetChild(1).rotation.eulerAngles ));
+        Instantiate(cObj1, playerPlace[index + 1].transform.GetChild(0).position,
+             Quaternion.Euler(playerPlace[index + 1].transform.GetChild(0).rotation.eulerAngles));
+        Instantiate(cObj2, playerPlace[index + 1].transform.GetChild(1).position,
+            Quaternion.Euler(playerPlace[index + 1].transform.GetChild(1).rotation.eulerAngles ));
         //Instantiate(cObj2, playerPlace[index + 1].transform.GetChild(1));
 
     }
