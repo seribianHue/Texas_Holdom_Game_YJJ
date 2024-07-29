@@ -16,20 +16,20 @@ public class TestCodes : MonoBehaviour
             //cards.Add(c);
         }
 
-        cards = cards.OrderBy(c => c.NO).ToList();
+        cards = cards.OrderBy(c => c.no).ToList();
 
         foreach(var c in cards)
         {
-            cardString += c.Suit.ToString() + c.NO + ", ";
+            cardString += c.suit.ToString() + c.no + ", ";
         }
 
         print(cardString);
         cardString = "";
-        var continous = cards.Zip(cards.Skip(1), (a, b) => a.NO + 1 == b.NO ? a : null);
+        var continous = cards.Zip(cards.Skip(1), (a, b) => a.no + 1 == b.no ? a : null);
         foreach(Card c in continous)
         {
             if(c != null)
-                cardString += c.Suit.ToString() + c.NO + ", ";
+                cardString += c.suit.ToString() + c.no + ", ";
         }
         print(cardString);
     }

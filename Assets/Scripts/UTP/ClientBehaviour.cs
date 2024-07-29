@@ -59,8 +59,13 @@ public class ClientBehaviour : MonoBehaviour
                 {
                     case 0:
                         {
-                            //int type = (int)stream.ReadUInt();
-                            string data = stream.ReadFixedString128().ToString();
+                            //사람들 정보 받기
+                            int pos = stream.ReadInt();
+                            string nickname = stream.ReadFixedString128().ToString();
+
+                            GameManager.Instance.AddPlayer(pos, nickname);
+
+/*                            string data = stream.ReadFixedString128().ToString();
                             string pos = data.Substring(0, 1);
                             string nickname = data.Substring(1);
 
@@ -69,12 +74,12 @@ public class ClientBehaviour : MonoBehaviour
                             if(nickname != this.nickName)
                             {
                                 print("New Player at " + pos + ", " + nickname);
-                            }
+                            }*/
                             break;
                         }
                     case 2:
                         {
-
+                            GameManager.Instance.GameStart_Client();
                             break;
                         }
                     case 3:

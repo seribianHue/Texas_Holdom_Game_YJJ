@@ -2,32 +2,24 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.NetworkInformation;
+using System.Reflection;
 using TMPro;
 using UnityEngine;
 using UnityEngine.XR;
+using static UnityEditor.PlayerSettings;
 
 
 public class Card : IEquatable<Card>
 {
     public enum SUIT { SPADE, HEART, DIAMOND, CLOVER };
 
-    SUIT suit;
-    public SUIT Suit
-    {
-        get { return suit; }
-    }
-    int no;
-    public int NO 
-    {
-        get { return no; }
-    }
+    public SUIT suit { get; private set; }
 
-    bool isCommunity;
-    public bool IsCommunity
-    {
-        get { return isCommunity; }
-        set { isCommunity = value; }
-    }
+    public int no { get; private set; }
+
+    public bool isCommunity { get; set; }
+
         
     public Card(SUIT suit, int no, bool isCommunity)
     {
@@ -139,7 +131,7 @@ public class PokerGame : MonoBehaviour
     [SerializeField]
     TextMeshProUGUI[] playerHand;
 
-    Card[] communityCards;
+    Card[] communityCards = new Card[COMMUNITYNUM];
     public List<PlayerInfo> playersInfo = new List<PlayerInfo>();
 
     PlayerInfo winner;
@@ -148,14 +140,14 @@ public class PokerGame : MonoBehaviour
     void Start()
     {
         InitDeck();
-        communityCards = GetRandCards(COMMUNITYNUM);
+/*        communityCards = GetRandCards(COMMUNITYNUM);
         for (int i = 0; i < communityCards.Length; i++)
         {
             GameObject cObj = GetCardPrefab((int)communityCards[i].Suit, communityCards[i].NO - 2);
             var c = Instantiate(cObj, cardPlaces[i].position, 
                 Quaternion.Euler(cObj.transform.rotation.eulerAngles + new Vector3(90, 0, 0)));
             //c.transform.Rotate(c.transform.rotation.eulerAngles + new Vector3(0, 0, 180));
-        }
+        }*/
 
 /*        playersInfo = new PlayerInfo[playerNum];
         for(int i = 0; i < playerNum; i++)
@@ -191,20 +183,48 @@ public class PokerGame : MonoBehaviour
 
     }
 
-    public void AddPlayerMe(int myIndex, int suit1, int NO1, int suit2, int NO2)
+    public void SetPlayerNickname(int pos, string nickname)
+    {
+        playerPlace[pos].transform.GetChild(4).GetComponent<TextMeshPro>().text = nickname;
+    }
+
+    public void SetCommunityCard_Server()
+    {
+        communityCards = GetRandCards(COMMUNITYNUM);
+        for (int i = 0; i < communityCards.Length; i++)
+        {
+            GameObject cObj = GetCardPrefab((int)communityCards[i].suit, communityCards[i].no - 2);
+            var c = Instantiate(cObj, cardPlaces[i].position,
+                Quaternion.Euler(cObj.transform.rotation.eulerAngles + new Vector3(90, 0, 0)));
+            //c.transform.Rotate(c.transform.rotation.eulerAngles + new Vector3(0, 0, 180));
+        }
+    }
+
+    public void SetCommunityCard_Client()
+    {
+        for (int i = 0; i < communityCards.Length; i++)
+        {
+            GameObject cObj = GetCardPrefab(0, 12);
+            var c = Instantiate(cObj, cardPlaces[i].position,
+                Quaternion.Euler(cObj.transform.rotation.eulerAngles + new Vector3(90, 0, 0)));
+            //c.transform.Rotate(c.transform.rotation.eulerAngles + new Vector3(0, 0, 180));
+        }
+    }
+
+/*    public void AddPlayerMe(int myIndex, int suit1, int NO1, int suit2, int NO2)
     {
         playersInfo.Add(new PlayerInfo((myIndex + 1).ToString(), 
             new Card((Card.SUIT)suit1, NO1, false), new Card((Card.SUIT)suit2, NO2, false)));
         Find_Hand3(playersInfo[myIndex]);
 
         //show player card
-        GameObject cObj1 = GetCardPrefab((int)playersInfo[myIndex].Card1.Suit, playersInfo[myIndex].Card1.NO - 2);
-        GameObject cObj2 = GetCardPrefab((int)playersInfo[myIndex].Card2.Suit, playersInfo[myIndex].Card2.NO - 2);
+        GameObject cObj1 = GetCardPrefab((int)playersInfo[myIndex].Card1.suit, playersInfo[myIndex].Card1.no - 2);
+        GameObject cObj2 = GetCardPrefab((int)playersInfo[myIndex].Card2.suit, playersInfo[myIndex].Card2.no - 2);
         Instantiate(cObj1, playerPlace[myIndex].transform.GetChild(0));
         Instantiate(cObj2, playerPlace[myIndex].transform.GetChild(1));
 
         //show player highest card
-        GameObject cObjH = GetCardPrefab((int)playersInfo[myIndex].highestCard.Suit, playersInfo[myIndex].highestCard.NO - 2);
+        GameObject cObjH = GetCardPrefab((int)playersInfo[myIndex].highestCard.suit, playersInfo[myIndex].highestCard.no - 2);
         Instantiate(cObjH, playerPlace[myIndex].transform.GetChild(2));
 
         //show player hand
@@ -215,58 +235,94 @@ public class PokerGame : MonoBehaviour
     public void AddPlayer(int playerIndex)
     {
         playersInfo.Add(new PlayerInfo((playerIndex + 1).ToString(), GetRandCards(1)[0], GetRandCards(1)[0]));
-        playersInfo[playerIndex].Card1.IsCommunity = false;
-        playersInfo[playerIndex].Card2.IsCommunity = false;
+        playersInfo[playerIndex].Card1.isCommunity = false;
+        playersInfo[playerIndex].Card2.isCommunity = false;
         Find_Hand3(playersInfo[playerIndex]);
 
         //show player card
-        GameObject cObj1 = GetCardPrefab((int)playersInfo[playerIndex].Card1.Suit, playersInfo[playerIndex].Card1.NO - 2);
-        GameObject cObj2 = GetCardPrefab((int)playersInfo[playerIndex].Card2.Suit, playersInfo[playerIndex].Card2.NO - 2);
+        GameObject cObj1 = GetCardPrefab((int)playersInfo[playerIndex].Card1.suit, playersInfo[playerIndex].Card1.no - 2);
+        GameObject cObj2 = GetCardPrefab((int)playersInfo[playerIndex].Card2.suit, playersInfo[playerIndex].Card2.no - 2);
         Instantiate(cObj1, playerPlace[playerIndex].transform.GetChild(0));
         Instantiate(cObj2, playerPlace[playerIndex].transform.GetChild(1));
 
         //show player highest card
-        GameObject cObjH = GetCardPrefab((int)playersInfo[playerIndex].highestCard.Suit, playersInfo[playerIndex].highestCard.NO - 2);
+        GameObject cObjH = GetCardPrefab((int)playersInfo[playerIndex].highestCard.suit, playersInfo[playerIndex].highestCard.no - 2);
         Instantiate(cObjH, playerPlace[playerIndex].transform.GetChild(2));
 
         //show player hand
         playerPlace[playerIndex].transform.GetChild(3).GetComponent<TextMeshPro>().text = playersInfo[playerIndex].playerHand.ToString();
 
-    }
+    }*/
 
-    public void DistributeCard(List<string> names, int playerNum)
+    public void DistributeCard(Dictionary<int, string> playerInfos, int playerNum)
     {
         for (int i = 0; i < playerNum; i++)
         {
-            playersInfo.Add(new PlayerInfo(names[i], GetRandCards(1)[0], GetRandCards(1)[0]));
-            playersInfo[i].Card1.IsCommunity = false;
-            playersInfo[i].Card2.IsCommunity = false;
+            playersInfo.Add(new PlayerInfo(playerInfos[i], GetRandCards(1)[0], GetRandCards(1)[0]));
+            playersInfo[i].Card1.isCommunity = false;
+            playersInfo[i].Card2.isCommunity = false;
             Find_Hand3(playersInfo[i]);
 
-            //show player card
-            GameObject cObj1 = GetCardPrefab((int)playersInfo[i].Card1.Suit, playersInfo[i].Card1.NO - 2);
-            GameObject cObj2 = GetCardPrefab((int)playersInfo[i].Card2.Suit, playersInfo[i].Card2.NO - 2);
+            SetCard_Server(playersInfo[i], i);
+
+/*            //show player card
+            GameObject cObj1 = GetCardPrefab((int)playersInfo[i].Card1.suit, playersInfo[i].Card1.no - 2);
+            GameObject cObj2 = GetCardPrefab((int)playersInfo[i].Card2.suit, playersInfo[i].Card2.no - 2);
             Instantiate(cObj1, playerPlace[i].transform.GetChild(0).position,
                 Quaternion.Euler(playerPlace[i].transform.GetChild(0).rotation.eulerAngles + new Vector3(180, 0, 0)));
             Instantiate(cObj2, playerPlace[i].transform.GetChild(1).position,
                 Quaternion.Euler(playerPlace[i].transform.GetChild(1).rotation.eulerAngles + new Vector3(180, 0, 0)));
 
             //show player highest card
-            GameObject cObjH = GetCardPrefab((int)playersInfo[i].highestCard.Suit, playersInfo[i].highestCard.NO - 2);
+            GameObject cObjH = GetCardPrefab((int)playersInfo[i].highestCard.suit, playersInfo[i].highestCard.no - 2);
             Instantiate(cObjH, playerPlace[i].transform.GetChild(2));
 
             //show player hand
             playerPlace[i].transform.GetChild(3).GetComponent<TextMeshPro>().text = playersInfo[i].playerHand.ToString();
-
+*/
 
         }
+    }
+
+    public void SetCard_Server(PlayerInfo pInfo, int pos)
+    {
+        if(pInfo.Player == GameManager.Instance.nickName)
+        {
+            ShowCardFront((int)pInfo.Card1.suit, pInfo.Card1.no, pos);
+        }
+        else
+        {
+            ShowCardBack((int)pInfo.Card1.suit, pInfo.Card1.no, pos);
+
+            NetworkManager.Instance.SendCardInfo((int)pInfo.Card1.suit, pInfo.Card1.no, pos);
+        }
+    }
+
+    void ShowCardFront(int suit, int no, int pos)
+    {
+        GameObject cObj1 = GetCardPrefab(suit, no - 2);
+        GameObject cObj2 = GetCardPrefab(suit, no - 2);
+        Instantiate(cObj1, playerPlace[pos].transform.GetChild(0).position,
+            Quaternion.Euler(playerPlace[pos].transform.GetChild(0).rotation.eulerAngles));
+        Instantiate(cObj2, playerPlace[pos].transform.GetChild(1).position,
+            Quaternion.Euler(playerPlace[pos].transform.GetChild(1).rotation.eulerAngles));
+    }
+
+    void ShowCardBack(int suit, int no, int pos)
+    {
+        GameObject cObj1 = GetCardPrefab(suit, no - 2);
+        GameObject cObj2 = GetCardPrefab(suit, no - 2);
+        Instantiate(cObj1, playerPlace[pos].transform.GetChild(0).position,
+            Quaternion.Euler(playerPlace[pos].transform.GetChild(0).rotation.eulerAngles + new Vector3(180, 0, 0)));
+        Instantiate(cObj2, playerPlace[pos].transform.GetChild(1).position,
+            Quaternion.Euler(playerPlace[pos].transform.GetChild(1).rotation.eulerAngles + new Vector3(180, 0, 0)));
     }
 
     public void ShowMyCard(PlayerInfo myInfo, int index)
     {
         //show player card
-        GameObject cObj1 = GetCardPrefab((int)myInfo.Card1.Suit, myInfo.Card1.NO - 2);
-        GameObject cObj2 = GetCardPrefab((int)myInfo.Card2.Suit, myInfo.Card2.NO - 2);
+        GameObject cObj1 = GetCardPrefab((int)myInfo.Card1.suit, myInfo.Card1.no - 2);
+        GameObject cObj2 = GetCardPrefab((int)myInfo.Card2.suit, myInfo.Card2.no - 2);
         Instantiate(cObj1, playerPlace[index + 1].transform.GetChild(0).position,
              Quaternion.Euler(playerPlace[index + 1].transform.GetChild(0).rotation.eulerAngles));
         Instantiate(cObj2, playerPlace[index + 1].transform.GetChild(1).position,
@@ -281,7 +337,7 @@ public class PokerGame : MonoBehaviour
         PlayerInfo[] winners = playersInfo.Where(n => n.playerHand == playersInfo.Min(x => x.playerHand)).ToArray();
         if (winners.Length > 1)
         {
-            winners = winners.OrderBy(c => c.highestCard.Suit).OrderByDescending(c => c.highestCard.NO).ToArray();
+            winners = winners.OrderBy(c => c.highestCard.suit).OrderByDescending(c => c.highestCard.no).ToArray();
             winner = winners[0];
         }
         else { winner = winners[0]; }
@@ -345,24 +401,24 @@ public class PokerGame : MonoBehaviour
     Card Find_PlayerInvolvedCard(List<Card> cards, PlayerInfo player)
     {
         Card playerCard;
-        cards = cards.OrderBy(c => c.Suit).OrderByDescending(c => c.NO).ToList();
+        cards = cards.OrderBy(c => c.suit).OrderByDescending(c => c.no).ToList();
         foreach (Card card in cards)
         {
-            if (!card.IsCommunity)
+            if (!card.isCommunity)
             {
                 playerCard = card;
                 return playerCard;
             }
         }
-        if(player.Card1.NO > player.Card2.NO)
+        if(player.Card1.no > player.Card2.no)
         {
             return player.Card1;
         }
-        else if(player.Card1.NO < player.Card2.NO)
+        else if(player.Card1.no < player.Card2.no)
             return player.Card2;
         else
         {
-            if(player.Card1.Suit > player.Card2.Suit)
+            if(player.Card1.suit > player.Card2.suit)
                 return player.Card1;
             else
                 return player.Card2;
@@ -371,21 +427,21 @@ public class PokerGame : MonoBehaviour
 
     HAND Find_FlushGroup(List<Card> cards, out List<Card> handCards)
     {
-        cards.Sort((c1, c2) => c1.NO.CompareTo(c2.NO));
-        var sameSuitGroup = cards.GroupBy(c => c.Suit).ToList();
+        cards.Sort((c1, c2) => c1.no.CompareTo(c2.no));
+        var sameSuitGroup = cards.GroupBy(c => c.suit).ToList();
         foreach(var sameSuit in sameSuitGroup)
         {
             if(sameSuit.Count() >= 5)
             {
                 List<Card> sameSuitList = sameSuit.ToList();
-                if ((sameSuitList[sameSuitList.Count - 5].NO == 10) && (sameSuitList[sameSuitList.Count - 1].NO == 14))
+                if ((sameSuitList[sameSuitList.Count - 5].no == 10) && (sameSuitList[sameSuitList.Count - 1].no == 14))
                 {
                     handCards = sameSuitList.Skip(sameSuitList.Count - 5).ToList();
                     return HAND.ROYAL_FLUSH;
                 }
-                else if (sameSuit.Zip(sameSuit.Skip(4), (a, b) => a.NO + 4 == b.NO ? a : null).Where(n => n != null).Count() >= 1)
+                else if (sameSuit.Zip(sameSuit.Skip(4), (a, b) => a.no + 4 == b.no ? a : null).Where(n => n != null).Count() >= 1)
                 {
-                    Card firstCard = sameSuit.Zip(sameSuit.Skip(4), (a, b) => a.NO + 4 == b.NO ? a : null).Where(n => n != null).Last();
+                    Card firstCard = sameSuit.Zip(sameSuit.Skip(4), (a, b) => a.no + 4 == b.no ? a : null).Where(n => n != null).Last();
                     //handCards = sameSuitList.Skip(sameSuitList.IndexOf(firstCard)).ToList();
                     handCards = sameSuitList.GetRange(sameSuitList.IndexOf(firstCard), 5);
 
@@ -404,16 +460,16 @@ public class PokerGame : MonoBehaviour
 
     HAND Find_Straight(List<Card> cards, out List<Card> handCards)
     {
-        cards.Sort((c1, c2) => c1.NO.CompareTo(c2.NO));
+        cards.Sort((c1, c2) => c1.no.CompareTo(c2.no));
         //중복 숫자 제거
-        List<Card> numsList = cards.GroupBy(n => n.NO).Select(m => m.First()).ToList();
+        List<Card> numsList = cards.GroupBy(n => n.no).Select(m => m.First()).ToList();
         //연속 5개 숫자 찾기
-        List<Card> continous = numsList.Zip(numsList.Skip(4), (a, b) => a.NO + 4 == b.NO ? a : null).Where(n => n != null).ToList();
+        List<Card> continous = numsList.Zip(numsList.Skip(4), (a, b) => a.no + 4 == b.no ? a : null).Where(n => n != null).ToList();
 
         if (continous.Count >= 1)
         {
             Card firstCard = continous.Last();
-            Card lastCard = cards.Where(n => n.NO == firstCard.NO).FirstOrDefault();
+            Card lastCard = cards.Where(n => n.no == firstCard.no).FirstOrDefault();
             //handCards = cards.Skip(cards.IndexOf(firstCard)).ToList();
             handCards = cards.GetRange(cards.IndexOf(firstCard), cards.IndexOf(lastCard));
             return HAND.STRAIGHT;
@@ -427,7 +483,7 @@ public class PokerGame : MonoBehaviour
         handCards = new List<Card>();
         int pair3 = 0;
         int pair2 = 0;
-        var sameNumGroup = cards.GroupBy(x => x.NO).ToList();
+        var sameNumGroup = cards.GroupBy(x => x.no).ToList();
         foreach (var sameNum in sameNumGroup)
         {
             if (sameNum.Count() >= 4)

@@ -24,11 +24,13 @@ public class UIManager : MonoBehaviour
     }
 
     [SerializeField] GameObject LobbyUI;
-
     public void SetLobbyUI(bool onoff)
     {
         LobbyUI.SetActive(onoff);
     }
+
+    [SerializeField] GameObject StartGameBTN;
+    public void SetStartGameBTN(bool onoff) { StartGameBTN.SetActive(onoff); }
 
     // Start is called before the first frame update
     void Start()

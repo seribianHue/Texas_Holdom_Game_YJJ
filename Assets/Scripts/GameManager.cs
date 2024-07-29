@@ -22,30 +22,44 @@ public class GameManager : MonoBehaviour
 
     const int COMMUNITYNUM = 5;
 
-    public int playerNum = 1;
-
     PlayerInfo myInfo;
+    public string nickName;
+    public int mypos;
 
     [SerializeField] public PokerGame pokergame;
-    [SerializeField] ServerBehaviour serverBehaviour;
     [SerializeField] NetworkManager networkManager;
 
-    public void AddPlayer()
+    public bool isServer;
+
+    //플레이어 추가
+    public Dictionary<int, string> playerInfo = new Dictionary<int, string>();
+    public void AddPlayer(int pos, string nickname)
     {
-        playerNum++;
+        playerInfo.Add(pos, nickname);
+        pokergame.SetPlayerNickname(pos, nickname);
+        if(nickname == nickName)
+        {
+            mypos = pos;
+        }
     }
 
-    List<string> playerNames = new List<string>();
-    public void GameStart()
+    //게임 시작
+    public void GameStart_Server()
     {
-        playerNames.Add(networkManager.nickName);
-        foreach(var client in serverBehaviour.clientList)
-        {
-            if(client != null)
-                playerNames.Add(client.nickName);
-        }
-        pokergame.DistributeCard(playerNames, playerNum);
-        serverBehaviour.SendAck(3, "");
+        pokergame.SetCommunityCard_Server();
+        pokergame.DistributeCard(playerInfo, playerInfo.Count);
+        networkManager.SendGameStart_Server();
+    }
+    public void GameStart_Client()
+    {
+        pokergame.SetCommunityCard_Client();
+    }
+
+    //플레이어 카드 보내고 받기
+    public void SendPlayerCard(int suit, int no)
+    {
+        string data = suit.ToString() + no.ToString();
+        //networkManager.SendCardInfo(3, data, );
     }
 
     public void SetMyInfoServer(int index)
@@ -58,16 +72,16 @@ public class GameManager : MonoBehaviour
         Card c1 = new Card((Card.SUIT)suit1, no1, false);
         Card c2 = new Card((Card.SUIT)suit2, no2, false);
         myInfo = new PlayerInfo(name, c1, c2);
-        pokergame.ShowMyCard(myInfo, networkManager.mypos);
+        pokergame.ShowMyCard(myInfo, mypos);
     }
 
     public void SendServerFold()
     {
-        networkManager.SendServerFoldCheck(0);
+        networkManager.SendFoldCheck_Client(0);
     }
     public void SendServerCheck()
     {
-        networkManager.SendServerFoldCheck(1);
+        networkManager.SendFoldCheck_Client(1);
     }
 
 

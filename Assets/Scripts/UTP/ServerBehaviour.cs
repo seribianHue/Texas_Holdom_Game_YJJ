@@ -82,13 +82,33 @@ public class ServerBehaviour : MonoBehaviour
                         //New Player Enter
                         case 0:
                             {
-                                clientList[i] = new Client(stream.ReadFixedString128().ToString(), m_Connections[i]);
+                                string newNickName = stream.ReadFixedString128().ToString();
                                 
+
+                                //기존 사람들에게 새로운 사람 정보 알려주기
+                                for (int j = 0; j < clientList.Length; j++)
+                                {
+                                    if (clientList[j] != null)
+                                    {
+                                        string newPlayerData = (i + 1).ToString() + newNickName;
+                                        SendAck(0, newPlayerData, m_Connections[j]);
+                                    }
+                                }
+
+
+                                //서버가 정보 받기
+                                clientList[i] = new Client(newNickName, m_Connections[i]);
                                 print("New Player at " + i + ", " + clientList[i].nickName);
-                                GameManager.Instance.AddPlayer();
-                                
-                                string data = i.ToString() + clientList[i].nickName;
-                                SendAck(0, data);
+                                GameManager.Instance.AddPlayer(i + 1, clientList[i].nickName);
+
+
+                                //새 멤버한테 기존 사람들 정보 알려주기
+                                foreach (var player in GameManager.Instance.playerInfo)
+                                {
+                                    string playerData = player.Key.ToString() + player.Value;
+                                    SendAck(0, playerData, clientList[i].net);
+                                }
+
                                 break;
                             }
                         //Fold Check recieve
@@ -128,50 +148,48 @@ public class ServerBehaviour : MonoBehaviour
         }
     }
 
-    public void SendAck(int type, string data)
+    public void SendGameStart()
+    {
+        for (int i = 0; i < clientList.Length; i++)
+        {
+            if (clientList[i] != null)
+            {
+                SendAck(2, "", clientList[i].net);
+            }
+        }
+    }
+
+    public void SendAck(int type, string data, NetworkConnection connection)
     {
         switch (type)
         {
             case 0:
                 {
                     //new Player Broadcast
-                    for (int i = 0; i < clientList.Length; i++)
-                    {
-                        if(clientList[i] != null)
-                        {
-                            DataStreamWriter writer3;
-                            m_Driver.BeginSend(m_Connections[i], out writer3);
-                            writer3.WriteUInt((uint)type);
-                            writer3.WriteFixedString128(data);
-                            m_Driver.EndSend(writer3);
-                            
-                        }
-
-                    }
+                    DataStreamWriter writer3;
+                    m_Driver.BeginSend(connection, out writer3);
+                    writer3.WriteInt(type);
+                    writer3.WriteInt(int.Parse(data.Substring(0,1)));
+                    writer3.WriteFixedString128(data.Substring(1));
+                    m_Driver.EndSend(writer3);
                     break;
                 }
 
             case 2:
                 {
                     //GameStart Broadcast
-                    for (int i = 0; i < clientList.Length; i++)
-                    {
-                        if (clientList[i] != null)
-                        {
-                            DataStreamWriter writer;
-                            m_Driver.BeginSend(m_Connections[i], out writer);
-                            writer.WriteUInt((uint)type);
-                            m_Driver.EndSend(writer);
-                        }
-                    }
-                    GameManager.Instance.GameStart();
-                    GameManager.Instance.SetMyInfoServer(0);
+                    DataStreamWriter writer;
+                    m_Driver.BeginSend(connection, out writer);
+                    writer.WriteUInt((uint)type);
+                    m_Driver.EndSend(writer);
+                    //GameManager.Instance.GameStart_Server();
+                    //GameManager.Instance.SetMyInfoServer(0);
                     break;
                 }
 
             case 3:
                 {
-                    //Card Distribute
+                    //Personal Card Distribute
                     for (int i = 0; i < clientList.Length; i++)
                     {
                         if (clientList[i] != null)
@@ -179,10 +197,10 @@ public class ServerBehaviour : MonoBehaviour
                             DataStreamWriter writer;
                             m_Driver.BeginSend(m_Connections[i], out writer);
                             writer.WriteUInt((uint)type);
-                            writer.WriteUInt((uint)GameManager.Instance.pokergame.playersInfo[i + 1].Card1.Suit);
-                            writer.WriteUInt((uint)GameManager.Instance.pokergame.playersInfo[i + 1].Card1.NO);
-                            writer.WriteUInt((uint)GameManager.Instance.pokergame.playersInfo[i + 1].Card2.Suit);
-                            writer.WriteUInt((uint)GameManager.Instance.pokergame.playersInfo[i + 1].Card2.NO);
+                            writer.WriteUInt((uint)GameManager.Instance.pokergame.playersInfo[i + 1].Card1.suit);
+                            writer.WriteUInt((uint)GameManager.Instance.pokergame.playersInfo[i + 1].Card1.no);
+                            writer.WriteUInt((uint)GameManager.Instance.pokergame.playersInfo[i + 1].Card2.suit);
+                            writer.WriteUInt((uint)GameManager.Instance.pokergame.playersInfo[i + 1].Card2.no);
                             m_Driver.EndSend(writer);
                         }
                     }

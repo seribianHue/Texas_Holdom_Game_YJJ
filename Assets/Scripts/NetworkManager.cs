@@ -6,11 +6,17 @@ using UnityEngine;
 
 public class NetworkManager : MonoBehaviour
 {
-    [SerializeField] ServerBehaviour m_Server;
-    [SerializeField] ClientBehaviour m_Client;
+    private static NetworkManager instance;
+    public static NetworkManager Instance {  get { return instance; } }
 
-    public string nickName;
-    public int mypos;
+    private void Awake()
+    {
+        instance = this;
+    }
+
+    [SerializeField] public ServerBehaviour m_Server;
+    [SerializeField] public ClientBehaviour m_Client;
+
     NetworkEndpoint m_network = NetworkEndpoint.LoopbackIpv4;
 
     [SerializeField]
@@ -20,21 +26,43 @@ public class NetworkManager : MonoBehaviour
     [SerializeField]
     TMP_InputField PortinputF;
 
-    
+    //서버 클라 만들기
     public void CreateServer()
     {
         GetComponent<ServerBehaviour>().port = PortNum;
         gameObject.GetComponent<ServerBehaviour>().enabled = true;
-        UIManager.Instance.SetLobbyUI(false);
-    }
 
+        UIManager.Instance.SetLobbyUI(false);
+
+        GameManager.Instance.AddPlayer(0, GameManager.Instance.nickName);
+        GameManager.Instance.isServer = true;
+    }
     public void CreateClient()
     {
         GetComponent<ClientBehaviour>().port = PortNum;
         gameObject.GetComponent<ClientBehaviour>().enabled = true;
-        UIManager.Instance.SetLobbyUI(false);
 
+        UIManager.Instance.SetLobbyUI(false);
+        UIManager.Instance.SetStartGameBTN(false);
+        
+        GameManager.Instance.isServer = false;
+
+        GetComponent<ClientBehaviour>().nickName = GameManager.Instance.nickName;
     }
+
+    //게임 시작 보내기 _ 서버
+    public void SendGameStart_Server()
+    {
+        m_Server.SendGameStart();
+    }
+
+    //플레이어 카드정보 보내기 _ 서버
+    public void SendCardInfo(int suit, int no, int pos)
+    {
+        string data = suit.ToString() + no.ToString();
+        m_Server.SendAck(3, data, m_Server.clientList[pos - 1].net);
+    }
+
     void Start()
     {
         IPinputF.text = m_network.Address.ToString();
@@ -48,8 +76,7 @@ public class NetworkManager : MonoBehaviour
 
     public void SetNickName(string nickName)
     {
-        this.nickName = nickName;
-        GetComponent<ClientBehaviour>().nickName = nickName;
+        GameManager.Instance.nickName = nickName;
 
     }
 
@@ -58,8 +85,10 @@ public class NetworkManager : MonoBehaviour
         PortNum = port;
     }
 
-    public void SendServerFoldCheck(int i)
+    public void SendFoldCheck_Client(int i)
     {
         m_Client.SendReq(2, i.ToString());
     }
+
+
 }
