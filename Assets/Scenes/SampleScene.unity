@@ -778,8 +778,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1866270223}
-        m_TargetAssemblyTypeName: NetworkManager, Assembly-CSharp
+      - m_Target: {fileID: 928076859}
+        m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
         m_MethodName: CreateClient
         m_Mode: 1
         m_Arguments:
@@ -1810,8 +1810,8 @@ MonoBehaviour:
   m_OnEndEdit:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1866270223}
-        m_TargetAssemblyTypeName: NetworkManager, Assembly-CSharp
+      - m_Target: {fileID: 928076859}
+        m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
         m_MethodName: SetNickName
         m_Mode: 0
         m_Arguments:
@@ -1840,8 +1840,8 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1866270223}
-        m_TargetAssemblyTypeName: NetworkManager, Assembly-CSharp
+      - m_Target: {fileID: 928076859}
+        m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
         m_MethodName: SetNickName
         m_Mode: 0
         m_Arguments:
@@ -4574,11 +4574,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: eaae0c0d373b7194bad019e2cf81354f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  nickName: 
-  mypos: 0
   pokergame: {fileID: 1063219877}
   networkManager: {fileID: 1866270223}
+  uiManager: {fileID: 1564020098}
+  nickName: 
+  mypos: 0
   isServer: 0
+  playerInfo: []
 --- !u!4 &928076860
 Transform:
   m_ObjectHideFlags: 0
@@ -4859,8 +4861,8 @@ MonoBehaviour:
   m_OnEndEdit:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1866270223}
-        m_TargetAssemblyTypeName: NetworkManager, Assembly-CSharp
+      - m_Target: {fileID: 928076859}
+        m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
         m_MethodName: SetPortNum
         m_Mode: 0
         m_Arguments:
@@ -4889,8 +4891,8 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1866270223}
-        m_TargetAssemblyTypeName: NetworkManager, Assembly-CSharp
+      - m_Target: {fileID: 928076859}
+        m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
         m_MethodName: SetPortNum
         m_Mode: 0
         m_Arguments:
@@ -5242,8 +5244,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1866270223}
-        m_TargetAssemblyTypeName: NetworkManager, Assembly-CSharp
+      - m_Target: {fileID: 928076859}
+        m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
         m_MethodName: CreateServer
         m_Mode: 1
         m_Arguments:
@@ -7871,8 +7873,6 @@ MonoBehaviour:
   m_Server: {fileID: 1866270221}
   m_Client: {fileID: 1866270220}
   IPinputF: {fileID: 1596646946}
-  PortNum: 
-  PortinputF: {fileID: 0}
 --- !u!1 &1868800651
 GameObject:
   m_ObjectHideFlags: 0

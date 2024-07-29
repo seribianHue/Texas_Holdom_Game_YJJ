@@ -50,46 +50,11 @@ public class ClientBehaviour : MonoBehaviour
             if (cmd == NetworkEvent.Type.Connect)
             {
                 Debug.Log("We are now connected to the server");
-
-                SendReq(0, nickName);
             }
             else if (cmd == NetworkEvent.Type.Data)
             {
-                switch (stream.ReadUInt())
-                {
-                    case 0:
-                        {
-                            //사람들 정보 받기
-                            int pos = stream.ReadInt();
-                            string nickname = stream.ReadFixedString128().ToString();
-
-                            GameManager.Instance.AddPlayer(pos, nickname);
-
-/*                            string data = stream.ReadFixedString128().ToString();
-                            string pos = data.Substring(0, 1);
-                            string nickname = data.Substring(1);
-
-                            myPos = int.Parse(pos);
-
-                            if(nickname != this.nickName)
-                            {
-                                print("New Player at " + pos + ", " + nickname);
-                            }*/
-                            break;
-                        }
-                    case 2:
-                        {
-                            GameManager.Instance.GameStart_Client();
-                            break;
-                        }
-                    case 3:
-                        {
-                            GameManager.Instance.SetMyInfoClient(nickName,
-                                (int)stream.ReadUInt(), (int)stream.ReadUInt(),  //card1
-                                (int)stream.ReadUInt(), (int)stream.ReadUInt()); //card2
-                            break;
-                        }
-                }
+                if (GameManager.m_networkServerRecievedEvent != null)
+                    GameManager.m_networkServerRecievedEvent.Invoke(stream);
             }
             else if (cmd == NetworkEvent.Type.Disconnect)
             {
@@ -106,6 +71,14 @@ public class ClientBehaviour : MonoBehaviour
         m_Driver.BeginSend(m_Connection, out writer3);
         writer3.WriteUInt(2);
         m_Driver.EndSend(writer3);
+    }
+
+    public void SendReq(DataStreamWriter writer)
+    {
+        DataStreamWriter tempWriter;
+        m_Driver.BeginSend(m_Connection, out tempWriter);
+        tempWriter = writer;
+        m_Driver.EndSend(tempWriter);
     }
 
     public void SendReq(int type, string data)

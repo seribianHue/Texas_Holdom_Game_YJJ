@@ -6,8 +6,6 @@ using System.Net.NetworkInformation;
 using System.Reflection;
 using TMPro;
 using UnityEngine;
-using UnityEngine.XR;
-using static UnityEditor.PlayerSettings;
 
 
 public class Card : IEquatable<Card>
@@ -183,11 +181,13 @@ public class PokerGame : MonoBehaviour
 
     }
 
+    //플레이어들 닉네임 화면에 설정
     public void SetPlayerNickname(int pos, string nickname)
     {
         playerPlace[pos].transform.GetChild(4).GetComponent<TextMeshPro>().text = nickname;
     }
 
+    //커뮤니티 카드 설정 _ 서버(정보 유)
     public void SetCommunityCard_Server()
     {
         communityCards = GetRandCards(COMMUNITYNUM);
@@ -200,6 +200,7 @@ public class PokerGame : MonoBehaviour
         }
     }
 
+    //커뮤니티 카드 설정 _ 클라(정보 무)
     public void SetCommunityCard_Client()
     {
         for (int i = 0; i < communityCards.Length; i++)
@@ -254,6 +255,7 @@ public class PokerGame : MonoBehaviour
 
     }*/
 
+    //각 플레이어 카드 설정 _ 서버(모든 정보 유)
     public void DistributeCard(Dictionary<int, string> playerInfos, int playerNum)
     {
         for (int i = 0; i < playerNum; i++)
@@ -283,7 +285,6 @@ public class PokerGame : MonoBehaviour
 
         }
     }
-
     public void SetCard_Server(PlayerInfo pInfo, int pos)
     {
         if(pInfo.Player == GameManager.Instance.nickName)
@@ -297,7 +298,6 @@ public class PokerGame : MonoBehaviour
             NetworkManager.Instance.SendCardInfo((int)pInfo.Card1.suit, pInfo.Card1.no, pos);
         }
     }
-
     void ShowCardFront(int suit, int no, int pos)
     {
         GameObject cObj1 = GetCardPrefab(suit, no - 2);
@@ -307,7 +307,6 @@ public class PokerGame : MonoBehaviour
         Instantiate(cObj2, playerPlace[pos].transform.GetChild(1).position,
             Quaternion.Euler(playerPlace[pos].transform.GetChild(1).rotation.eulerAngles));
     }
-
     void ShowCardBack(int suit, int no, int pos)
     {
         GameObject cObj1 = GetCardPrefab(suit, no - 2);
@@ -317,6 +316,10 @@ public class PokerGame : MonoBehaviour
         Instantiate(cObj2, playerPlace[pos].transform.GetChild(1).position,
             Quaternion.Euler(playerPlace[pos].transform.GetChild(1).rotation.eulerAngles + new Vector3(180, 0, 0)));
     }
+
+
+    //각 플레이어 카드 설정 _ 클라(자신 정보만 유)
+
 
     public void ShowMyCard(PlayerInfo myInfo, int index)
     {
