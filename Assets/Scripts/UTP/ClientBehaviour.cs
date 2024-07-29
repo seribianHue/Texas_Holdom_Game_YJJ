@@ -7,6 +7,7 @@ using System.IO;
 using System;
 using System.Text;
 using Unity.VisualScripting;
+using System.Collections.Generic;
 
 public class ClientBehaviour : MonoBehaviour
 {
@@ -73,12 +74,39 @@ public class ClientBehaviour : MonoBehaviour
         m_Driver.EndSend(writer3);
     }
 
-    public void SendReq(DataStreamWriter writer)
+    //서버에 보낼 DataStream
+    /// <summary>
+    /// Writer 만들기
+    /// </summary>
+    /// <returns></returns>
+    /*
+     * 
+     * public DataStreamWriter MakeStream()
     {
-        DataStreamWriter tempWriter;
-        m_Driver.BeginSend(m_Connection, out tempWriter);
-        tempWriter = writer;
-        m_Driver.EndSend(tempWriter);
+        DataStreamWriter writer;
+        m_Driver.BeginSend(m_Connection, out writer);
+        return writer;
+    }
+    */
+    public void SendStream(List<byte> packet)
+    {
+        DataStreamWriter writer;
+        m_Driver.BeginSend(m_Connection, out writer);
+        NativeArray<byte> NAByte = new NativeArray<byte>(packet.ToArray(), Allocator.Persistent);
+        writer.WriteBytes(NAByte);
+        m_Driver.EndSend(writer);
+    }
+
+
+
+    //서버에게 데이터 보내기
+    public void SendReq(List<byte> packet)
+    {
+        DataStreamWriter writer;
+        m_Driver.BeginSend(m_Connection, out writer);
+        NativeArray<byte> NAByte = new NativeArray<byte>(packet.ToArray(), Allocator.Persistent);
+        writer.WriteBytes(NAByte);
+        m_Driver.EndSend(writer);
     }
 
     public void SendReq(int type, string data)

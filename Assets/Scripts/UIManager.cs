@@ -33,6 +33,9 @@ public class UIManager : MonoBehaviour
     [SerializeField] GameObject StartGameBTN;
     public void SetStartGameBTN(bool onoff) { StartGameBTN.SetActive(onoff); }
 
+    [SerializeField] GameObject SendMyInfoBTN;
+    public void SetSendMyInfoBTN(bool onoff) {  SendMyInfoBTN.SetActive(onoff); }
+
     // Start is called before the first frame update
     void Start()
     {

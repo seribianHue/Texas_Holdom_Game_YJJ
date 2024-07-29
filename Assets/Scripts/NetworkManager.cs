@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TMPro;
 using Unity.Collections;
 using Unity.Networking.Transport;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class NetworkManager : MonoBehaviour
@@ -15,8 +16,8 @@ public class NetworkManager : MonoBehaviour
         instance = this;
     }
 
-    [SerializeField] public ServerBehaviour m_Server;
-    [SerializeField] public ClientBehaviour m_Client;
+    public ServerBehaviour m_Server;
+    public ClientBehaviour m_Client;
 
     NetworkEndpoint m_network = NetworkEndpoint.LoopbackIpv4;
 
@@ -26,19 +27,21 @@ public class NetworkManager : MonoBehaviour
     //서버 클라 만들기
     public void CreateServer(string portNum)
     {
+        m_Server = this.AddComponent<ServerBehaviour>();
         m_Server.port = portNum;
-        gameObject.GetComponent<ServerBehaviour>().enabled = true;
+        //gameObject.GetComponent<ServerBehaviour>().enabled = true;
     }
     public void CreateClient(string portNum)
     {
+        m_Client = this.AddComponent<ClientBehaviour>();
         m_Client.port = portNum;
-        gameObject.GetComponent<ClientBehaviour>().enabled = true;
+        //gameObject.GetComponent<ClientBehaviour>().enabled = true;
     }
 
     //클라 -> 서버 정보 보내기
-    public void SendDatatoServer(DataStreamWriter writer)
+    public void SendDatatoServer(List<byte> packet)
     {
-        m_Client.SendReq(writer);
+        m_Client.SendReq(packet);
     }
     //서버 -> 모든 클라에게 정보 보내기
     public void SendDatatoClientAll(DataStreamWriter writer)

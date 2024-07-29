@@ -1,5 +1,8 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Events;
@@ -76,6 +79,8 @@ public class GameManager : MonoBehaviour
         networkManager.CreateServer(portNum);
         
         uiManager.SetLobbyUI(false);
+        uiManager.SetSendMyInfoBTN(false);
+
         AddPlayer(nickName);
         isServer = true;    
     }
@@ -89,6 +94,12 @@ public class GameManager : MonoBehaviour
 
         isServer = false;
 
+        //networkManager.SendDatatoServer(writeClientData(0, nickName));
+    }
+
+    //클라에서 서버에게 자신의 정보 보내기
+    public void SendMyInfotoServer()
+    {
         networkManager.SendDatatoServer(writeClientData(0, nickName));
     }
 
@@ -106,20 +117,26 @@ public class GameManager : MonoBehaviour
     }
 
     //클라에서 보낼 stream 제작
-    DataStreamWriter writeClientData(int type, string data)
+    public List<byte> writeClientData(int type, string data)
     {
         DataStreamWriter writer = new DataStreamWriter();
+        List<byte> packet = new List<byte>();
+        
         switch (type)
         {
             //내 닉네임 정보 보내기
             case 0:
                 {
+                    packet.AddRange(BitConverter.GetBytes(type));
+                    packet.AddRange(Encoding.UTF8.GetBytes(data));
+                    packet.InsertRange(0, BitConverter.GetBytes(packet.Count));
+
                     writer.WriteInt(type);
                     writer.WriteFixedString128(data);
                     break;
                 }
         }
-        return writer;
+        return packet;
 
     }
 
@@ -160,7 +177,11 @@ public class GameManager : MonoBehaviour
     //클라에서 받을 stream 조작
     void ReadRecievedClientData(DataStreamReader stream)
     {
-        switch (stream.ReadInt())
+        //받는거 확인
+        NativeArray<byte> NAByte = new NativeArray<byte>();
+        stream.ReadBytes(NAByte);
+        print(NAByte);
+/*        switch (stream.ReadInt())
         {
             //New Player Enter
             case 0:
@@ -176,7 +197,7 @@ public class GameManager : MonoBehaviour
                             networkManager.SendDatatoClient(writeServerData(0, data), i);
                     }
 
-                    /*   //현재 가장 앞의 자리의 비어있는 위치 찾기
+                    *//*   //현재 가장 앞의 자리의 비어있는 위치 찾기
                        int pos;
                        for(int i = 0; i < networkManager.m_Server.clientList.Length; i++)
                        {
@@ -189,7 +210,7 @@ public class GameManager : MonoBehaviour
                        //서버가 정보 받기
                        networkManager.m_Server.clientList[pos] = new Client(newNickName, networkManager.m_Server.m_Connections[i]);
                        print("New Player at " + i + ", " + clientList[i].nickName);
-                       GameManager.Instance.AddPlayer(i + 1, clientList[i].nickName);*/
+                       GameManager.Instance.AddPlayer(i + 1, clientList[i].nickName);*//*
 
 
                     //새 멤버한테 기존 사람들 정보 알려주기
@@ -207,7 +228,7 @@ public class GameManager : MonoBehaviour
 
                     break;
                 }
-        }
+        }*/
     }
 
     //서버에서 받을 stream 조작
