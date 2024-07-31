@@ -295,7 +295,7 @@ public class PokerGame : MonoBehaviour
         {
             ShowCardBack((int)pInfo.Card1.suit, pInfo.Card1.no, pos);
 
-            NetworkManager.Instance.SendCardInfo((int)pInfo.Card1.suit, pInfo.Card1.no, pos);
+            //NetworkManager.Instance.SendCardInfo((int)pInfo.Card1.suit, pInfo.Card1.no, pos);
         }
     }
     void ShowCardFront(int suit, int no, int pos)

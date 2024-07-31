@@ -22,12 +22,17 @@ public class ClientBehaviour : MonoBehaviour
 
     void Start()
     {
+
+    }
+
+    public void Connect(string IPAddr, string Port)
+    {
         m_Driver = NetworkDriver.Create();
         m_Connection = default(NetworkConnection);
-
-        var endpoint = NetworkEndpoint.LoopbackIpv4;
+        //나한테 할려면 127.0.0.1
+        var endpoint = NetworkEndpoint.Parse(IPAddr, ushort.Parse(Port.AsSpan()));
         //endpoint.Port = 9000;
-        endpoint.Port = ushort.Parse(port.AsSpan());
+        //endpoint.Port = ushort.Parse(port.AsSpan());
 
         m_Connection = m_Driver.Connect(endpoint);
     }
@@ -50,12 +55,21 @@ public class ClientBehaviour : MonoBehaviour
         {
             if (cmd == NetworkEvent.Type.Connect)
             {
+                if (GameManager.m_networkServerConnectEvent != null)
+                    GameManager.m_networkServerConnectEvent.Invoke();
                 Debug.Log("We are now connected to the server");
             }
             else if (cmd == NetworkEvent.Type.Data)
             {
+                byte[] packet = new byte[stream.Length];
+                NativeArray<byte> NAByte = new NativeArray<byte>(packet, Allocator.Persistent);
+                stream.ReadBytes(NAByte);
+                packet = NAByte.ToArray();
+
+
+
                 if (GameManager.m_networkServerRecievedEvent != null)
-                    GameManager.m_networkServerRecievedEvent.Invoke(stream);
+                    GameManager.m_networkServerRecievedEvent.Invoke(packet);
             }
             else if (cmd == NetworkEvent.Type.Disconnect)
             {
@@ -66,38 +80,26 @@ public class ClientBehaviour : MonoBehaviour
         }
     }
 
-    public void SendMsg()
+    //서버에게 byte array packet 보내기
+    public void SendReq(byte[] packet)
+    {
+        DataStreamWriter writer;
+        m_Driver.BeginSend(m_Connection, out writer);
+        NativeArray<byte> NAByte = new NativeArray<byte>(packet, Allocator.Persistent);
+        writer.WriteBytes(NAByte);
+        m_Driver.EndSend(writer);
+    }
+
+
+
+
+/*    public void SendMsg()
     {
         DataStreamWriter writer3;
         m_Driver.BeginSend(m_Connection, out writer3);
         writer3.WriteUInt(2);
         m_Driver.EndSend(writer3);
     }
-
-    //서버에 보낼 DataStream
-    /// <summary>
-    /// Writer 만들기
-    /// </summary>
-    /// <returns></returns>
-    /*
-     * 
-     * public DataStreamWriter MakeStream()
-    {
-        DataStreamWriter writer;
-        m_Driver.BeginSend(m_Connection, out writer);
-        return writer;
-    }
-    */
-    public void SendStream(List<byte> packet)
-    {
-        DataStreamWriter writer;
-        m_Driver.BeginSend(m_Connection, out writer);
-        NativeArray<byte> NAByte = new NativeArray<byte>(packet.ToArray(), Allocator.Persistent);
-        writer.WriteBytes(NAByte);
-        m_Driver.EndSend(writer);
-    }
-
-
 
     //서버에게 데이터 보내기
     public void SendReq(List<byte> packet)
@@ -135,6 +137,6 @@ public class ClientBehaviour : MonoBehaviour
         }
 
 
-    }
+    }*/
 
 }

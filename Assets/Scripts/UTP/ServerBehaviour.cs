@@ -31,10 +31,17 @@ public class ServerBehaviour : MonoBehaviour
 
     void Start()
     {
+    }
+
+    public void Connect(string IPAddr, string Port)
+    {
         m_Driver = NetworkDriver.Create();
+
         var endpoint = NetworkEndpoint.AnyIpv4;
-        //endpoint.Port = 9000;
-        endpoint.Port = ushort.Parse(port.AsSpan());
+        endpoint.Port = ushort.Parse(Port.AsSpan());
+
+        //var endpoint = NetworkEndpoint.Parse(IPAddr, ushort.Parse(Port.AsSpan()));
+
 
         if (m_Driver.Bind(endpoint) != 0)
             Debug.Log("Failed to bind to port 9000");
@@ -43,6 +50,8 @@ public class ServerBehaviour : MonoBehaviour
 
         m_Connections = new NativeList<NetworkConnection>(16, Allocator.Persistent);
     }
+
+
 
     void Update()
     {
@@ -76,8 +85,13 @@ public class ServerBehaviour : MonoBehaviour
             {
                 if (cmd == NetworkEvent.Type.Data)
                 {
-                    if(GameManager.m_networkClientRecievedEvent != null)
-                        GameManager.m_networkClientRecievedEvent.Invoke(stream);
+                    byte[] packet = new byte[stream.Length];
+                    NativeArray<byte> NAByte = new NativeArray<byte>(packet, Allocator.Persistent);
+                    stream.ReadBytes(NAByte);
+                    packet = NAByte.ToArray();
+
+                    if (GameManager.m_networkClientRecievedEvent != null)
+                        GameManager.m_networkClientRecievedEvent.Invoke(packet);
 
                 }
                 else if (cmd == NetworkEvent.Type.Disconnect)
@@ -99,35 +113,36 @@ public class ServerBehaviour : MonoBehaviour
     }
 
     //모든 클라에게 정보 보내기
-    public void SendAcktoAll(DataStreamWriter writer)
+    public void SendAcktoAll(byte[] packet)
     {
         for (int i = 0; i < m_Connections.Length; i++)
         {
             if (!m_Connections[i].IsCreated)
             {
-                DataStreamWriter tempWriter;
-                m_Driver.BeginSend(m_Connections[i], out tempWriter);
-                tempWriter = writer;
-                m_Driver.EndSend(tempWriter);
+                DataStreamWriter writer;
+                m_Driver.BeginSend(m_Connections[i], out writer);
+                NativeArray<byte> NAByte = new NativeArray<byte>(packet, Allocator.Persistent);
+                writer.WriteBytes(NAByte);
+                m_Driver.EndSend(writer);
             }
         }
     }
 
     //특정 클라에게 정보 보내기
-    public void SendAck(DataStreamWriter writer, int pos)
+    public void SendAck(byte[] packet, int pos)
     {
-        DataStreamWriter tempWriter;
-        m_Driver.BeginSend(m_Connections[pos - 1], out tempWriter);
-        tempWriter = writer;
-        m_Driver.EndSend(tempWriter);
+        DataStreamWriter writer;
+        m_Driver.BeginSend(m_Connections[pos - 1], out writer);
+        NativeArray<byte> NAByte = new NativeArray<byte>(packet, Allocator.Persistent);
+        writer.WriteBytes(NAByte);
+        m_Driver.EndSend(writer);
     }
 
-    //새로운 연결 관리
 
 
 
-    //게임 시작 보내기
-/*    public void SendGameStart()
+/*    //게임 시작 보내기
+    public void SendGameStart()
     {
         for (int i = 0; i < clientList.Length; i++)
         {
@@ -136,13 +151,13 @@ public class ServerBehaviour : MonoBehaviour
                 SendAck(2, "", clientList[i].net);
             }
         }
-    }*/
+    }
 
     //플레이어 카드 보내기
-/*    public void SendPlayerCardInfo(string data, int pos)
+    public void SendPlayerCardInfo(string data, int pos)
     {
         SendAck(3, data, clientList[pos - 1].net);
-    }*/
+    }
     public void SendAck(int type, string data, NetworkConnection connection)
     {
         switch (type)
@@ -185,5 +200,5 @@ public class ServerBehaviour : MonoBehaviour
                     break;
                 }
         }
-    }
+    }*/
 }
