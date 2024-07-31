@@ -129,12 +129,14 @@ public class GameManager : MonoBehaviour
 
     //라운드 관리
     List<int> playerState = new List<int>();
+    Rounds curRound;
     void InitPlayerState()
     {
         foreach (var player in playerInfo)
         {
             playerState.Add(-1);
         }
+        curRound = Rounds.SETTING;
     }
 
     public void Fold_BTN()
@@ -208,9 +210,8 @@ public class GameManager : MonoBehaviour
                 {
                     packet.Add((byte)type);
                     packet.Add((byte)int.Parse(data.Substring(0, 1)));
-                    packet.Add((byte)int.Parse(data.Substring(1, 2)));
-                    packet.Add((byte)int.Parse(data.Substring(3, 1)));
-                    packet.Add((byte)int.Parse(data.Substring(4, 2)));
+                    packet.Add((byte)int.Parse(data.Substring(1)));
+
                     break;
                 }
             //Send All Client about the state
@@ -284,6 +285,11 @@ public class GameManager : MonoBehaviour
                     if(pos == playerState.Count - 1)
                     {
                         //start next round
+                        curRound += 1;
+                        if(curRound == Rounds.FIRST)
+                        {
+                            pokergame.SetFirstRoundCard();
+                        }
 
                         uiManager.SetFoldBTNInteractable(true);
                         uiManager.SetCheckBTNInteractable(true);
@@ -365,8 +371,13 @@ public class GameManager : MonoBehaviour
                 pokergame.SetPlayerCard_Host(playerInfo[i], i);
             else
             {
-                string cardinfo = pokergame.SetPlayerCard_Guest(playerInfo[i], i);
-                networkManager.SendDatatoClient(writeServerData(3, cardinfo), i);
+                List<int> cardinfo = pokergame.SetPlayerCard_Guest(playerInfo[i], i);
+                string card1 = cardinfo[0].ToString() + cardinfo[1].ToString();
+                string card2 = cardinfo[2].ToString() + cardinfo[3].ToString();
+
+                networkManager.SendDatatoClient(writeServerData(3, card1), i);
+                networkManager.SendDatatoClient(writeServerData(3, card2), i);
+
             }
         }
 
@@ -412,6 +423,9 @@ public class GameManager : MonoBehaviour
 
     }
 
+    int recieveMyCard = 0;
+    Card card1;
+    Card card2;
     //서버에서 받을 stream 조작
     void ReadRecievedServerData(byte[] packet)
     {
@@ -446,22 +460,32 @@ public class GameManager : MonoBehaviour
             //My Card Get
             case 3:
                 {
-                    int c1Suit = Convert.ToInt32(data[0]);
-                    int c1NO = Convert.ToInt32(data[1]);
-                    int c2Suit = Convert.ToInt32(data[2]);
-                    int c2No = Convert.ToInt32(data[3]);
+                    int cSuit = Convert.ToInt32(data[0]);
+                    int cNO = Convert.ToInt32(data[1]);
+                    recieveMyCard++;
 
-                    for(int i = 0; i < playerInfo.Count; i++)
+                    if(recieveMyCard == 1)
                     {
-                        if (i == mypos)
+                        card1 = new Card((Card.SUIT)cSuit, cNO, false);
+                    }
+                    else if (recieveMyCard == 2)
+                    {
+                        card2 = new Card((Card.SUIT)cSuit, cNO, false);
+
+                        for(int i = 0; i < playerInfo.Count; i++)
                         {
-                            pokergame.SetPlayerCard_Self(playerInfo[i], c1Suit, c1NO, c2Suit, c2No, i);
-                        }
-                        else
-                        {
-                            pokergame.SetPlayerCard_Other(playerInfo[i], i);
+                            if (i == mypos)
+                            {
+                                pokergame.SetPlayerCard_Self(playerInfo[i], card1, card2, i);
+                            }
+                            else
+                            {
+                                pokergame.SetPlayerCard_Other(playerInfo[i], i);
+                            }
                         }
                     }
+
+
                     break;
                 }
             //someone has bet

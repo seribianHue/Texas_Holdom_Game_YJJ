@@ -19,6 +19,7 @@ public class Card : IEquatable<Card>
 
     public bool isCommunity { get; set; }
 
+    public GameObject cardObj;
         
     public Card(SUIT suit, int no, bool isCommunity)
     {
@@ -193,7 +194,18 @@ public class PokerGame : MonoBehaviour
             GameObject cObj = GetCardPrefab((int)communityCards[i].suit, communityCards[i].no - 2);
             var c = Instantiate(cObj, cardPlaces[i].position,
                 Quaternion.Euler(cObj.transform.rotation.eulerAngles + new Vector3(90, 0, 0)));
-            //c.transform.Rotate(c.transform.rotation.eulerAngles + new Vector3(0, 0, 180));
+            communityCards[i].cardObj = c;
+        }
+    }
+
+    public void SetFirstRoundCard()
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            Destroy(communityCards[i].cardObj);
+            GameObject cObj = GetCardPrefab((int)communityCards[i].suit, communityCards[i].no - 2);
+            var c = Instantiate(cObj, cardPlaces[i]);
+            communityCards[i].cardObj = c;
         }
     }
 
@@ -205,7 +217,6 @@ public class PokerGame : MonoBehaviour
             GameObject cObj = GetCardPrefab(0, 12);
             var c = Instantiate(cObj, cardPlaces[i].position,
                 Quaternion.Euler(cObj.transform.rotation.eulerAngles + new Vector3(90, 0, 0)));
-            //c.transform.Rotate(c.transform.rotation.eulerAngles + new Vector3(0, 0, 180));
         }
     }
 
@@ -266,7 +277,7 @@ public class PokerGame : MonoBehaviour
         ShowCardFront(playersInfo[pos], pos);
     }
     
-    public string SetPlayerCard_Guest(string nickname, int pos)
+    public List<int> SetPlayerCard_Guest(string nickname, int pos)
     {
         Card c1 = GetRandCards(1)[0];
         Card c2 = GetRandCards(1)[0];
@@ -278,11 +289,11 @@ public class PokerGame : MonoBehaviour
 
         ShowCardFront(playersInfo[pos], pos);
 
-        /*        List<int> cardInfo = new List<int>() 
+        List<int> cardInfo = new List<int>()
                     { ((int)playersInfo[pos].Card1.suit), playersInfo[pos].Card1.no,
-                    (int) playersInfo[pos].Card2.suit, playersInfo[pos].Card2.no};*/
-        string cardInfo = ((int)playersInfo[pos].Card1.suit).ToString() + playersInfo[pos].Card1.no.ToString("D2") +
-            ((int)playersInfo[pos].Card2.suit).ToString() + playersInfo[pos].Card2.no.ToString("D2");
+                    (int) playersInfo[pos].Card2.suit, playersInfo[pos].Card2.no};
+/*        string cardInfo = ((int)playersInfo[pos].Card1.suit).ToString() + playersInfo[pos].Card1.no.ToString("D2") +
+            ((int)playersInfo[pos].Card2.suit).ToString() + playersInfo[pos].Card2.no.ToString("D2");*/
 
         return cardInfo;
     }
@@ -309,10 +320,9 @@ public class PokerGame : MonoBehaviour
 
 
     //각 플레이어 카드 설정 _ 클라(자신 정보만 유)
-    public void SetPlayerCard_Self(string nickname, int c1Suit, int c1NO, int c2Suit, int c2NO, int pos)
+    public void SetPlayerCard_Self(string nickname, Card c1, Card c2, int pos)
     {
-        playersInfo.Add(new PlayerInfo(nickname, new Card((Card.SUIT)c1Suit, c1NO, false),
-            new Card((Card.SUIT)c2Suit, c2NO, false)));
+        playersInfo.Add(new PlayerInfo(nickname, c1, c2));
 
         ShowCardFront(playersInfo[pos], pos);
     }
