@@ -29,21 +29,8 @@ public class GameManager : MonoBehaviour
 
     public static NetworkConnectEvent m_networkServerConnectEvent;
 
-    private static GameManager instance;
-    public static GameManager Instance { get { return instance; } }
-
     private void Awake()
     {
-        if (instance == null)
-        {
-            instance = this;
-        }
-        else if (instance != this)
-        {
-            Destroy(gameObject);
-        }
-        DontDestroyOnLoad(gameObject);
-
         if (m_networkClientRecievedEvent == null)
             m_networkClientRecievedEvent = new NetworkRecievedClient();
         m_networkClientRecievedEvent.AddListener(ReadRecievedClientData);
@@ -100,6 +87,9 @@ public class GameManager : MonoBehaviour
         uiManager.SetLobbyUI(false);
         uiManager.SetSendMyInfoBTN(false);
 
+        uiManager.SetFoldBTNInteractable(false);
+        uiManager.SetCheckBTNInteractable(false);
+
         AddPlayer(nickName);
         isServer = true;    
     }
@@ -110,6 +100,9 @@ public class GameManager : MonoBehaviour
 
         uiManager.SetLobbyUI(false);
         uiManager.SetStartGameBTN(false);
+
+        uiManager.SetFoldBTNInteractable(false);
+        uiManager.SetCheckBTNInteractable(false);
 
         isServer = false;
     }
@@ -134,6 +127,58 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    //라운드 관리
+    List<int> playerState = new List<int>();
+    void InitPlayerState()
+    {
+        foreach (var player in playerInfo)
+        {
+            playerState.Add(-1);
+        }
+    }
+
+    public void Fold_BTN()
+    {
+        if (isServer)
+        {
+            playerState[0] = 0;
+            uiManager.SetFoldBTNInteractable(false);
+            uiManager.SetCheckBTNInteractable(false);
+            
+            string info = mypos.ToString() + 0.ToString() + 0.ToString();
+            networkManager.SendDatatoClientAll(writeServerData(6, info));
+        }
+        else
+        {
+            string info = mypos.ToString() + 0.ToString() + 0.ToString();
+            networkManager.SendDatatoServer(writeClientData(2, info));
+
+            uiManager.SetFoldBTNInteractable(false);
+            uiManager.SetCheckBTNInteractable(false);
+        }
+
+    }
+    public void Check_BTN()
+    {
+        if (isServer)
+        {
+            playerState[0] = 1;
+            uiManager.SetFoldBTNInteractable(false);
+            uiManager.SetCheckBTNInteractable(false);
+
+            string info = mypos.ToString() + 1.ToString() + 0.ToString();
+            networkManager.SendDatatoClientAll(writeServerData(6, info));
+        }
+        else
+        {
+            string info = mypos.ToString() + 1.ToString() + 0.ToString();
+            networkManager.SendDatatoServer(writeClientData(2, info));
+
+            uiManager.SetFoldBTNInteractable(false);
+            uiManager.SetCheckBTNInteractable(false);
+        }
+
+    }
 
     #region Server Methods
 
@@ -148,8 +193,32 @@ public class GameManager : MonoBehaviour
             case 0:
                 {
                     packet.Add((byte)type);
+                    packet.Add((byte)int.Parse(data.Substring(0, 1))); //pos
+                    packet.AddRange(Encoding.UTF8.GetBytes(data)); //nickname
+                    break;
+                }
+            //Game Start Broadcast
+            case 2:
+                {
+                    packet.Add((byte)type);
+                    break;
+                }
+            //Pass Card Info to Player
+            case 3:
+                {
+                    packet.Add((byte)type);
                     packet.Add((byte)int.Parse(data.Substring(0, 1)));
-                    packet.AddRange(Encoding.UTF8.GetBytes(data));
+                    packet.Add((byte)int.Parse(data.Substring(1, 2)));
+                    packet.Add((byte)int.Parse(data.Substring(3, 1)));
+                    packet.Add((byte)int.Parse(data.Substring(4, 2)));
+                    break;
+                }
+            //Send All Client about the state
+            case 6:
+                {
+                    packet.Add((byte)type);
+                    packet.Add((byte)int.Parse(data.Substring(0, 1)));
+                    packet.Add((byte)int.Parse(data.Substring(1, 1)));
                     break;
                 }
         }
@@ -194,6 +263,35 @@ public class GameManager : MonoBehaviour
                     //test
                     print(type);
                     print(nickname);
+                    break;
+                }
+            //Fold or Check
+            case 2:
+                {
+                    int pos = Convert.ToInt32(data[0]);
+                    int state = Convert.ToInt32(data[1]);
+                    int price = BitConverter.ToInt32(data.Skip(2).ToArray());
+
+                    if(state == 0)
+                    {
+                        playerState[pos] = 0;
+                    }
+                    else
+                    {
+                        playerState[pos] = 1;
+                    }
+
+                    if(pos == playerState.Count - 1)
+                    {
+                        //start next round
+
+                        uiManager.SetFoldBTNInteractable(true);
+                        uiManager.SetCheckBTNInteractable(true);
+                    }
+
+                    string stateData = pos.ToString() + state.ToString();
+
+                    networkManager.SendDatatoClientAll(writeServerData(6, stateData));
                     break;
                 }
         }
@@ -255,6 +353,32 @@ public class GameManager : MonoBehaviour
         networkManager.SendDatatoClientAll(packet);
     }
 
+    public void GameStartBTN()
+    {
+        pokergame.SetCommunityCard_Server();
+        
+        networkManager.SendDatatoClientAll(writeServerData(2, ""));
+
+        for (int i = 0; i < playerInfo.Count; i++)
+        {
+            if (i == 0)
+                pokergame.SetPlayerCard_Host(playerInfo[i], i);
+            else
+            {
+                string cardinfo = pokergame.SetPlayerCard_Guest(playerInfo[i], i);
+                networkManager.SendDatatoClient(writeServerData(3, cardinfo), i);
+            }
+        }
+
+        //Fold, Check 버튼 활성화
+        uiManager.SetFoldBTNInteractable(true);
+        uiManager.SetCheckBTNInteractable(true);
+
+        InitPlayerState(); //플레이어 현재 상태 초기화
+
+    }
+
+
     #endregion
 
 
@@ -272,6 +396,15 @@ public class GameManager : MonoBehaviour
                 {
                     packet.Add((byte)type);
                     packet.AddRange(Encoding.UTF8.GetBytes(data));
+                    break;
+                }
+            //Fold or Check or somthing
+            case 2:
+                {
+                    packet.Add((byte)type);
+                    packet.Add((byte)int.Parse(data.Substring(0, 1))); //pos
+                    packet.Add((byte)int.Parse(data.Substring(1, 1))); //fold or check
+                    packet.AddRange(BitConverter.GetBytes(int.Parse(data.Substring(2)))); //price
                     break;
                 }
         }
@@ -304,6 +437,48 @@ public class GameManager : MonoBehaviour
                     print(nickname);
                     break;
                 }
+            //Game Start
+            case 2:
+                {
+                    pokergame.SetCommunityCard_Client();
+                    break;
+                }
+            //My Card Get
+            case 3:
+                {
+                    int c1Suit = Convert.ToInt32(data[0]);
+                    int c1NO = Convert.ToInt32(data[1]);
+                    int c2Suit = Convert.ToInt32(data[2]);
+                    int c2No = Convert.ToInt32(data[3]);
+
+                    for(int i = 0; i < playerInfo.Count; i++)
+                    {
+                        if (i == mypos)
+                        {
+                            pokergame.SetPlayerCard_Self(playerInfo[i], c1Suit, c1NO, c2Suit, c2No, i);
+                        }
+                        else
+                        {
+                            pokergame.SetPlayerCard_Other(playerInfo[i], i);
+                        }
+                    }
+                    break;
+                }
+            //someone has bet
+            case 6:
+                {
+                    int pos = Convert.ToInt32(data[0]);
+                    int state = Convert.ToInt32(data[1]);
+
+                    if(pos + 1 == mypos)
+                    {
+                        //Fold, Check 버튼 활성화
+                        uiManager.SetFoldBTNInteractable(true);
+                        uiManager.SetCheckBTNInteractable(true);
+                    }
+                    break;
+                }
+
         }
 
         /*        switch (stream.ReadInt())
@@ -331,6 +506,8 @@ public class GameManager : MonoBehaviour
                         }
                 }*/
     }
+
+
 
     #endregion
 

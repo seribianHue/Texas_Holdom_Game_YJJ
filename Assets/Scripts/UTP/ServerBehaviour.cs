@@ -117,7 +117,7 @@ public class ServerBehaviour : MonoBehaviour
     {
         for (int i = 0; i < m_Connections.Length; i++)
         {
-            if (!m_Connections[i].IsCreated)
+            if (m_Connections[i].IsCreated)
             {
                 DataStreamWriter writer;
                 m_Driver.BeginSend(m_Connections[i], out writer);

@@ -9,14 +9,6 @@ using UnityEngine;
 
 public class NetworkManager : MonoBehaviour
 {
-    private static NetworkManager instance;
-    public static NetworkManager Instance {  get { return instance; } }
-
-    private void Awake()
-    {
-        instance = this;
-    }
-
     public ServerBehaviour m_Server;
     public ClientBehaviour m_Client;
 

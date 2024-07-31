@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
 {
@@ -35,6 +36,13 @@ public class UIManager : MonoBehaviour
 
     [SerializeField] GameObject SendMyInfoBTN;
     public void SetSendMyInfoBTN(bool onoff) {  SendMyInfoBTN.SetActive(onoff); }
+
+    //Fold Check Button
+    [SerializeField] Button FoldBTN;
+    public void SetFoldBTNInteractable(bool onoff) { FoldBTN.interactable = onoff; }
+    [SerializeField] Button CheckBTN;
+    public void SetCheckBTNInteractable(bool onoff) { CheckBTN.interactable = onoff; }
+
 
     // Start is called before the first frame update
     void Start()

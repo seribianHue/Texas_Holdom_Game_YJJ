@@ -6,6 +6,7 @@ using System.Net.NetworkInformation;
 using System.Reflection;
 using TMPro;
 using UnityEngine;
+using static Card;
 
 
 public class Card : IEquatable<Card>
@@ -36,12 +37,6 @@ public class Card : IEquatable<Card>
 
 }
 
-public enum HAND
-{
-    ROYAL_FLUSH, STRAIGHT_FLUSH, FOUR_KIND, FUll_HOUSE,
-    FLUSH, STRAIGHT, THREE_KIND, TWO_PAIR, PAIR, HIGH_CARD
-}
-
 public class PlayerInfo
 {
     string player;
@@ -54,11 +49,13 @@ public class PlayerInfo
     public Card Card1
     {
         get { return card1; }
+        set { card1 = value; }
     }
     Card card2;
     public Card Card2
     {
         get { return card2; }
+        set { card2 = value; }
     }
     public HAND playerHand;
 
@@ -256,61 +253,54 @@ public class PokerGame : MonoBehaviour
     }*/
 
     //각 플레이어 카드 설정 _ 서버(모든 정보 유)
-    public void DistributeCard(Dictionary<int, string> playerInfos, int playerNum)
+    public void SetPlayerCard_Host(string nickname, int pos)
     {
-        for (int i = 0; i < playerNum; i++)
-        {
-            playersInfo.Add(new PlayerInfo(playerInfos[i], GetRandCards(1)[0], GetRandCards(1)[0]));
-            playersInfo[i].Card1.isCommunity = false;
-            playersInfo[i].Card2.isCommunity = false;
-            Find_Hand3(playersInfo[i]);
+        Card c1 = GetRandCards(1)[0];
+        Card c2 = GetRandCards(1)[0];
 
-            SetCard_Server(playersInfo[i], i);
+        playersInfo.Add(new PlayerInfo(nickname, c1, c2));
+        playersInfo[pos].Card1.isCommunity = false;
+        playersInfo[pos].Card2.isCommunity = false;
+        Find_Hand3(playersInfo[pos]);
 
-/*            //show player card
-            GameObject cObj1 = GetCardPrefab((int)playersInfo[i].Card1.suit, playersInfo[i].Card1.no - 2);
-            GameObject cObj2 = GetCardPrefab((int)playersInfo[i].Card2.suit, playersInfo[i].Card2.no - 2);
-            Instantiate(cObj1, playerPlace[i].transform.GetChild(0).position,
-                Quaternion.Euler(playerPlace[i].transform.GetChild(0).rotation.eulerAngles + new Vector3(180, 0, 0)));
-            Instantiate(cObj2, playerPlace[i].transform.GetChild(1).position,
-                Quaternion.Euler(playerPlace[i].transform.GetChild(1).rotation.eulerAngles + new Vector3(180, 0, 0)));
-
-            //show player highest card
-            GameObject cObjH = GetCardPrefab((int)playersInfo[i].highestCard.suit, playersInfo[i].highestCard.no - 2);
-            Instantiate(cObjH, playerPlace[i].transform.GetChild(2));
-
-            //show player hand
-            playerPlace[i].transform.GetChild(3).GetComponent<TextMeshPro>().text = playersInfo[i].playerHand.ToString();
-*/
-
-        }
+        ShowCardFront(playersInfo[pos], pos);
     }
-    public void SetCard_Server(PlayerInfo pInfo, int pos)
+    
+    public string SetPlayerCard_Guest(string nickname, int pos)
     {
-        if(pInfo.Player == GameManager.Instance.nickName)
-        {
-            ShowCardFront((int)pInfo.Card1.suit, pInfo.Card1.no, pos);
-        }
-        else
-        {
-            ShowCardBack((int)pInfo.Card1.suit, pInfo.Card1.no, pos);
+        Card c1 = GetRandCards(1)[0];
+        Card c2 = GetRandCards(1)[0];
 
-            //NetworkManager.Instance.SendCardInfo((int)pInfo.Card1.suit, pInfo.Card1.no, pos);
-        }
+        playersInfo.Add(new PlayerInfo(nickname, c1, c2));
+        playersInfo[pos].Card1.isCommunity = false;
+        playersInfo[pos].Card2.isCommunity = false;
+        Find_Hand3(playersInfo[pos]);
+
+        ShowCardFront(playersInfo[pos], pos);
+
+        /*        List<int> cardInfo = new List<int>() 
+                    { ((int)playersInfo[pos].Card1.suit), playersInfo[pos].Card1.no,
+                    (int) playersInfo[pos].Card2.suit, playersInfo[pos].Card2.no};*/
+        string cardInfo = ((int)playersInfo[pos].Card1.suit).ToString() + playersInfo[pos].Card1.no.ToString("D2") +
+            ((int)playersInfo[pos].Card2.suit).ToString() + playersInfo[pos].Card2.no.ToString("D2");
+
+        return cardInfo;
     }
-    void ShowCardFront(int suit, int no, int pos)
+
+    //카드 보여주기 _ 앞, 뒤
+    void ShowCardFront(PlayerInfo playerinfo, int pos)
     {
-        GameObject cObj1 = GetCardPrefab(suit, no - 2);
-        GameObject cObj2 = GetCardPrefab(suit, no - 2);
+        GameObject cObj1 = GetCardPrefab((int)playerinfo.Card1.suit, playerinfo.Card1.no - 2);
+        GameObject cObj2 = GetCardPrefab((int)playerinfo.Card2.suit, playerinfo.Card2.no - 2);
         Instantiate(cObj1, playerPlace[pos].transform.GetChild(0).position,
             Quaternion.Euler(playerPlace[pos].transform.GetChild(0).rotation.eulerAngles));
         Instantiate(cObj2, playerPlace[pos].transform.GetChild(1).position,
             Quaternion.Euler(playerPlace[pos].transform.GetChild(1).rotation.eulerAngles));
     }
-    void ShowCardBack(int suit, int no, int pos)
+    void ShowCardBack(PlayerInfo playerinfo, int pos)
     {
-        GameObject cObj1 = GetCardPrefab(suit, no - 2);
-        GameObject cObj2 = GetCardPrefab(suit, no - 2);
+        GameObject cObj1 = GetCardPrefab((int)playerinfo.Card1.suit, playerinfo.Card1.no - 2);
+        GameObject cObj2 = GetCardPrefab((int)playerinfo.Card2.suit, playerinfo.Card2.no - 2);
         Instantiate(cObj1, playerPlace[pos].transform.GetChild(0).position,
             Quaternion.Euler(playerPlace[pos].transform.GetChild(0).rotation.eulerAngles + new Vector3(180, 0, 0)));
         Instantiate(cObj2, playerPlace[pos].transform.GetChild(1).position,
@@ -319,6 +309,21 @@ public class PokerGame : MonoBehaviour
 
 
     //각 플레이어 카드 설정 _ 클라(자신 정보만 유)
+    public void SetPlayerCard_Self(string nickname, int c1Suit, int c1NO, int c2Suit, int c2NO, int pos)
+    {
+        playersInfo.Add(new PlayerInfo(nickname, new Card((Card.SUIT)c1Suit, c1NO, false),
+            new Card((Card.SUIT)c2Suit, c2NO, false)));
+
+        ShowCardFront(playersInfo[pos], pos);
+    }
+
+    public void SetPlayerCard_Other(string nickname, int pos)
+    {
+        playersInfo.Add(new PlayerInfo(nickname, new Card((Card.SUIT)0, 14, false),
+            new Card((Card.SUIT)0, 14, false)));
+
+        ShowCardBack(playersInfo[pos], pos);
+    }
 
 
     public void ShowMyCard(PlayerInfo myInfo, int index)

@@ -5774,7 +5774,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 928076859}
         m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
-        m_MethodName: SendServerFold
+        m_MethodName: Fold_BTN
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -6914,6 +6914,8 @@ MonoBehaviour:
   LobbyUI: {fileID: 2125808158}
   StartGameBTN: {fileID: 1939165727}
   SendMyInfoBTN: {fileID: 75531287}
+  FoldBTN: {fileID: 1322192645}
+  CheckBTN: {fileID: 2105981955}
 --- !u!4 &1564020099
 Transform:
   m_ObjectHideFlags: 0
@@ -8544,7 +8546,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 928076859}
         m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
-        m_MethodName: TestSendToClient
+        m_MethodName: GameStartBTN
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -9572,7 +9574,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 928076859}
         m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
-        m_MethodName: SendServerCheck
+        m_MethodName: Check_BTN
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
