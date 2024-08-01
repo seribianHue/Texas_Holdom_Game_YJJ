@@ -151,6 +151,17 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    public void SetMyPos()
+    {
+        for(int i = 0; i < playerInfo.Count; i++)
+        {
+            if (playerInfo[i] == this.nickName)
+            {
+                mypos = i;
+            }
+        }
+    }
+
     //자리 정리 with nickname and pos
     public void SetGameNicknames()
     {
@@ -366,7 +377,8 @@ public class GameManager : MonoBehaviour
 
                     playerInfo.RemoveAt(pos);
                     pokergame.SetPlayerNicknameAll(playerInfo);
-                    networkManager.SendDatatoClientAll(writeServerData(1, pos.ToString()));
+                    if(playerInfo.Count > 1)
+                        networkManager.SendDatatoClientAll(writeServerData(1, pos.ToString()));
                     break;
                 }
             //Fold or Check
@@ -620,6 +632,7 @@ public class GameManager : MonoBehaviour
                     int pos = Convert.ToInt32(data[0]);
 
                     playerInfo.RemoveAt(pos);
+                    SetMyPos();
                     pokergame.SetPlayerNicknameAll(playerInfo);
                     break;
                 }

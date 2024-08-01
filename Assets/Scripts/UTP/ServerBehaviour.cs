@@ -75,29 +75,34 @@ public class ServerBehaviour : MonoBehaviour
         DataStreamReader stream;
         for (int i = 0; i < m_Connections.Length; i++)
         {
-            if (!m_Connections[i].IsCreated)
-                continue;
-
-            NetworkEvent.Type cmd;
-            while ((cmd = m_Driver.PopEventForConnection(m_Connections[i], out stream)) != NetworkEvent.Type.Empty)
+            if(i < m_Connections.Length)
             {
-                if (cmd == NetworkEvent.Type.Data)
-                {
-                    byte[] packet = new byte[stream.Length];
-                    NativeArray<byte> NAByte = new NativeArray<byte>(packet, Allocator.Persistent);
-                    stream.ReadBytes(NAByte);
-                    packet = NAByte.ToArray();
+                if (!m_Connections[i].IsCreated)
+                    continue;
 
-                    if (GameManager.m_networkClientRecievedEvent != null)
-                        GameManager.m_networkClientRecievedEvent.Invoke(packet);
-
-                }
-                else if (cmd == NetworkEvent.Type.Disconnect)
+                NetworkEvent.Type cmd;
+                while ((i < m_Connections.Length) && 
+                    ((cmd = m_Driver.PopEventForConnection(m_Connections[i], out stream)) != NetworkEvent.Type.Empty))
                 {
-                    Debug.Log("Client disconnected from server");
-                    m_Connections[i] = default(NetworkConnection);
+                    if (cmd == NetworkEvent.Type.Data)
+                    {
+                        byte[] packet = new byte[stream.Length];
+                        NativeArray<byte> NAByte = new NativeArray<byte>(packet, Allocator.Persistent);
+                        stream.ReadBytes(NAByte);
+                        packet = NAByte.ToArray();
+
+                        if (GameManager.m_networkClientRecievedEvent != null)
+                            GameManager.m_networkClientRecievedEvent.Invoke(packet);
+
+                    }
+                    else if (cmd == NetworkEvent.Type.Disconnect)
+                    {
+                        Debug.Log("Client disconnected from server");
+                        m_Connections[i] = default(NetworkConnection);
+                    }
                 }
             }
+
         }
     }
 
@@ -120,7 +125,8 @@ public class ServerBehaviour : MonoBehaviour
     public void DisconnectClient(int pos)
     {
         m_Connections[pos - 1].Disconnect(m_Driver);
-        m_Connections.RemoveAt(pos - 1);
+        m_Connections.RemoveAtSwapBack(pos - 1);
+
     }
 
     //모든 클라에게 정보 보내기
