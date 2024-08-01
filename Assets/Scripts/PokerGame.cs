@@ -187,6 +187,20 @@ public class PokerGame : MonoBehaviour
         playerPlace[pos].transform.GetChild(4).GetComponent<TextMeshPro>().text = nickname;
     }
 
+    //모든 플레이어 자리 이름 다시 설정
+    public void SetPlayerNicknameAll(List<string> playersInfo)
+    {
+        foreach(var place in playerPlace)
+        {
+            place.transform.GetChild(4).GetComponent<TextMeshPro>().text = "";
+        }
+        
+        for(int i = 0;  i < playersInfo.Count; i++)
+        {
+            playerPlace[i].transform.GetChild(4).GetComponent<TextMeshPro>().text = playersInfo[i];
+        }
+    }
+
     //커뮤니티 카드 설정 _ 서버(정보 유)
     public void SetCommunityCard_Server()
     {
@@ -362,7 +376,7 @@ public class PokerGame : MonoBehaviour
         }
         winnerText.text = "Winner : " + winner.Player;
         playerCardInfo = playersInfo;
-        return playersInfo.FindIndex(n => n.Player == winner.Player);
+        return playersInfo.FindIndex(n => n.highestCard == winner.highestCard);
     }
 
     //승자 보여주기 _ 클라

@@ -425,7 +425,7 @@ GameObject:
   - component: {fileID: 75531290}
   - component: {fileID: 75531289}
   m_Layer: 5
-  m_Name: BTN_SendMyInfo
+  m_Name: BTN_Quit
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -497,7 +497,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 928076859}
         m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
-        m_MethodName: SendMyInfotoServer
+        m_MethodName: QuitGame_BTN
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -7758,7 +7758,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Send My Info
+  m_text: Quit
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}

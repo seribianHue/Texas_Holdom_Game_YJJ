@@ -15,10 +15,7 @@ public class ClientBehaviour : MonoBehaviour
     public NetworkConnection m_Connection;
     public bool Done;
 
-    public string port;
 
-    public string nickName;
-    public int myPos;
 
     void Start()
     {
@@ -74,7 +71,7 @@ public class ClientBehaviour : MonoBehaviour
             else if (cmd == NetworkEvent.Type.Disconnect)
             {
                 Debug.Log("Client got disconnect form server");
-                m_Connection = default(NetworkConnection);
+                DisconnectNet();
             }
 
         }
@@ -90,53 +87,67 @@ public class ClientBehaviour : MonoBehaviour
         m_Driver.EndSend(writer);
     }
 
-
-
-
-/*    public void SendMsg()
+    private void OnDestroy()
     {
-        DataStreamWriter writer3;
-        m_Driver.BeginSend(m_Connection, out writer3);
-        writer3.WriteUInt(2);
-        m_Driver.EndSend(writer3);
+        //DisconnectNet();
     }
 
-    //서버에게 데이터 보내기
-    public void SendReq(List<byte> packet)
+    public void DisconnectNet()
     {
-        DataStreamWriter writer;
-        m_Driver.BeginSend(m_Connection, out writer);
-        NativeArray<byte> NAByte = new NativeArray<byte>(packet.ToArray(), Allocator.Persistent);
-        writer.WriteBytes(NAByte);
-        m_Driver.EndSend(writer);
+        if (GameManager.m_clientNetworkDisconnectEvent != null)
+            GameManager.m_clientNetworkDisconnectEvent.Invoke();
+
+        m_Connection = default(NetworkConnection);
+        m_Driver.Dispose();
+        Destroy(this);
     }
 
-    public void SendReq(int type, string data)
-    {
-        switch (type)
+
+
+    /*    public void SendMsg()
         {
-            case 0:
-                {
-                    DataStreamWriter writer;
-                    m_Driver.BeginSend(m_Connection, out writer);
-                    writer.WriteUInt((uint)type);
-                    writer.WriteFixedString128(data);
-                    m_Driver.EndSend(writer);
-                    break;
-                }
-            case 2:
-                {
-                    DataStreamWriter writer;
-                    m_Driver.BeginSend(m_Connection, out writer);
-                    writer.WriteUInt((uint)type);
-                    writer.WriteUInt((uint)myPos);
-                    writer.WriteUInt(uint.Parse(data));
-                    m_Driver.EndSend(writer);
-                    break;
-                }
+            DataStreamWriter writer3;
+            m_Driver.BeginSend(m_Connection, out writer3);
+            writer3.WriteUInt(2);
+            m_Driver.EndSend(writer3);
         }
 
+        //서버에게 데이터 보내기
+        public void SendReq(List<byte> packet)
+        {
+            DataStreamWriter writer;
+            m_Driver.BeginSend(m_Connection, out writer);
+            NativeArray<byte> NAByte = new NativeArray<byte>(packet.ToArray(), Allocator.Persistent);
+            writer.WriteBytes(NAByte);
+            m_Driver.EndSend(writer);
+        }
 
-    }*/
+        public void SendReq(int type, string data)
+        {
+            switch (type)
+            {
+                case 0:
+                    {
+                        DataStreamWriter writer;
+                        m_Driver.BeginSend(m_Connection, out writer);
+                        writer.WriteUInt((uint)type);
+                        writer.WriteFixedString128(data);
+                        m_Driver.EndSend(writer);
+                        break;
+                    }
+                case 2:
+                    {
+                        DataStreamWriter writer;
+                        m_Driver.BeginSend(m_Connection, out writer);
+                        writer.WriteUInt((uint)type);
+                        writer.WriteUInt((uint)myPos);
+                        writer.WriteUInt(uint.Parse(data));
+                        m_Driver.EndSend(writer);
+                        break;
+                    }
+            }
+
+
+        }*/
 
 }

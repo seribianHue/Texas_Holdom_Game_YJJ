@@ -46,6 +46,19 @@ public class NetworkManager : MonoBehaviour
         m_Server.SendAck(packet, pos);
     }
 
+    //서버 종료
+    public void QuitServer()
+    {
+        Destroy(m_Server);
+        m_Server = null;
+    }
+
+    public void DisconnectClient(int pos)
+    {
+        m_Server.DisconnectClient(pos); 
+    }
+
+
 
 /*
     //게임 시작 보내기 _ 서버

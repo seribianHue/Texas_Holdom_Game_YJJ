@@ -27,8 +27,6 @@ public class ServerBehaviour : MonoBehaviour
     public NetworkDriver m_Driver;
     private NativeList<NetworkConnection> m_Connections;
 
-    public string port;
-
     void Start()
     {
     }
@@ -105,11 +103,24 @@ public class ServerBehaviour : MonoBehaviour
 
     void OnDestroy()
     {
+        DisconnectNet();
+    }
+
+    void DisconnectNet()
+    {
+        if (GameManager.m_serverNetworkDisconnectEvent != null)
+            GameManager.m_serverNetworkDisconnectEvent.Invoke();
         if (m_Driver.IsCreated)
         {
             m_Driver.Dispose();
             m_Connections.Dispose();
         }
+    }
+
+    public void DisconnectClient(int pos)
+    {
+        m_Connections[pos - 1].Disconnect(m_Driver);
+        m_Connections.RemoveAt(pos - 1);
     }
 
     //모든 클라에게 정보 보내기

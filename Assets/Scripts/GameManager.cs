@@ -7,19 +7,13 @@ using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Events;
 
-public class NetworkRecievedClient : UnityEvent<byte[]>
-{
+public class NetworkRecievedClient : UnityEvent<byte[]> { }
+public class NetworkRecievedServer : UnityEvent<byte[]> { }
 
-}
-public class NetworkRecievedServer : UnityEvent<byte[]>
-{
+public class NetworkConnectEvent : UnityEvent { }
 
-}
-
-public class NetworkConnectEvent : UnityEvent
-{
-
-}
+public class ClientNetworkDisconnectEvent : UnityEvent { }
+public class ServerNetworkDisconnectEvent : UnityEvent { }
 
 
 public class GameManager : MonoBehaviour
@@ -28,6 +22,9 @@ public class GameManager : MonoBehaviour
     public static NetworkRecievedServer m_networkServerRecievedEvent;
 
     public static NetworkConnectEvent m_networkServerConnectEvent;
+
+    public static ClientNetworkDisconnectEvent m_clientNetworkDisconnectEvent;
+    public static ServerNetworkDisconnectEvent m_serverNetworkDisconnectEvent;
 
     private void Awake()
     {
@@ -42,6 +39,14 @@ public class GameManager : MonoBehaviour
         if(m_networkServerConnectEvent == null)
             m_networkServerConnectEvent = new NetworkConnectEvent();
         m_networkServerConnectEvent.AddListener(SendMyInfotoServer);
+
+        if (m_clientNetworkDisconnectEvent == null)
+            m_clientNetworkDisconnectEvent = new ClientNetworkDisconnectEvent();
+        m_clientNetworkDisconnectEvent.AddListener(ClientNetworkDisconnected);
+
+        if (m_serverNetworkDisconnectEvent == null)
+            m_serverNetworkDisconnectEvent = new ServerNetworkDisconnectEvent();
+        m_serverNetworkDisconnectEvent.AddListener(ServerNetworkDisconnected);
     }
 
     [SerializeField] PokerGame pokergame;
@@ -108,6 +113,25 @@ public class GameManager : MonoBehaviour
     }
     #endregion
 
+    #region Server, Client Network Disconnected
+    public void ClientNetworkDisconnected()
+    {
+        networkManager.SendDatatoServer(writeClientData(1, mypos.ToString()));
+        playerInfo.Clear();
+        pokergame.SetPlayerNicknameAll(playerInfo);
+
+        uiManager.SetLobbyUI(true);
+    }
+
+    public void ServerNetworkDisconnected()
+    {
+        playerInfo.Clear();
+        pokergame.SetPlayerNicknameAll(playerInfo);
+
+        uiManager.SetLobbyUI(true);
+    }
+    #endregion
+
     //클라에서 서버에게 자신의 정보 보내기
     public void SendMyInfotoServer()
     {
@@ -127,6 +151,14 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    //자리 정리 with nickname and pos
+    public void SetGameNicknames()
+    {
+        pokergame.SetPlayerNicknameAll(playerInfo);
+    }
+
+
+
     //라운드 관리
     List<int> playerState = new List<int>();
     Rounds curRound;
@@ -138,6 +170,8 @@ public class GameManager : MonoBehaviour
         }
         curRound = Rounds.SETTING;
     }
+
+    #region Fold Check BTN
 
     public void Fold_BTN()
     {
@@ -182,6 +216,23 @@ public class GameManager : MonoBehaviour
 
     }
 
+    #endregion
+
+    public void QuitGame_BTN()
+    {
+        if (isServer)
+        {
+            networkManager.QuitServer();
+            uiManager.SetLobbyUI(true);
+        }
+        else
+        {
+            ClientNetworkDisconnected();
+            //networkManager.QuitClient();
+        }
+    }
+
+
     #region Server Methods
     int sendCommCard = 0;
     //서버에서 보낼 stream 제작
@@ -197,6 +248,13 @@ public class GameManager : MonoBehaviour
                     packet.Add((byte)type);
                     packet.Add((byte)int.Parse(data.Substring(0, 1))); //pos
                     packet.AddRange(Encoding.UTF8.GetBytes(data)); //nickname
+                    break;
+                }
+            //Player Out Broadcast
+            case 1:
+                {
+                    packet.Add((byte)type);
+                    packet.Add((byte)int.Parse(data.Substring(0, 1))); //pos
                     break;
                 }
             //Game Start Broadcast
@@ -294,10 +352,21 @@ public class GameManager : MonoBehaviour
                         networkManager.SendDatatoClient
                             (writeServerData(0, playerData), playerInfo.Count - 1);
                     }
-
+                    
                     //test
                     print(type);
                     print(nickname);
+                    break;
+                }
+            //Client Connection Lost
+            case 1:
+                {
+                    int pos = Convert.ToInt32(data[0]);
+                    networkManager.DisconnectClient(pos);
+
+                    playerInfo.RemoveAt(pos);
+                    pokergame.SetPlayerNicknameAll(playerInfo);
+                    networkManager.SendDatatoClientAll(writeServerData(1, pos.ToString()));
                     break;
                 }
             //Fold or Check
@@ -473,6 +542,7 @@ public class GameManager : MonoBehaviour
 
     #endregion
 
+    
 
     #region Client Methods
 
@@ -488,6 +558,14 @@ public class GameManager : MonoBehaviour
                 {
                     packet.Add((byte)type);
                     packet.AddRange(Encoding.UTF8.GetBytes(data));
+                    break;
+                }
+            //연결 끊기
+            case 1:
+                {
+                    packet.Add((byte)type);
+                    packet.Add((byte)int.Parse(data.Substring(0, 1))); //pos
+
                     break;
                 }
             //Fold or Check or somthing
@@ -534,6 +612,15 @@ public class GameManager : MonoBehaviour
 
                     //test
                     print(nickname);
+                    break;
+                }
+            //Someone Got Out
+            case 1:
+                {
+                    int pos = Convert.ToInt32(data[0]);
+
+                    playerInfo.RemoveAt(pos);
+                    pokergame.SetPlayerNicknameAll(playerInfo);
                     break;
                 }
             //Game Start
