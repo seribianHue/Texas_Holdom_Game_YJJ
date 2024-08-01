@@ -158,7 +158,7 @@ public class GameManager : MonoBehaviour
             uiManager.SetFoldBTNInteractable(false);
             uiManager.SetCheckBTNInteractable(false);
         }
-
+        pokergame.FoldPlayer(mypos);
     }
     public void Check_BTN()
     {
@@ -183,7 +183,7 @@ public class GameManager : MonoBehaviour
     }
 
     #region Server Methods
-
+    int sendCommCard = 0;
     //서버에서 보낼 stream 제작
     byte[] writeServerData(int type, string data)
     {
@@ -214,12 +214,46 @@ public class GameManager : MonoBehaviour
 
                     break;
                 }
+            //Send Community Card Info to Players
+            case 4:
+                {
+                    packet.Add((byte)type);
+                    packet.Add((byte)int.Parse(data.Substring(0, 1))); //suit
+                    packet.Add((byte)int.Parse(data.Substring(1))); //no
+                    sendCommCard++;
+                    if(sendCommCard == 5)
+                    {
+                        pokergame.SetResultAll();
+                    }
+                    break;
+                }
+            //Send lived Player's card
+            case 5:
+                {
+                    packet.Add((byte)type);
+                    packet.Add((byte)int.Parse(data.Substring(0, 1))); //player index
+                    packet.Add((byte)int.Parse(data.Substring(1, 1))); //suit
+                    packet.Add((byte)int.Parse(data.Substring(2))); //no
+                    break;
+                }
+
             //Send All Client about the state
             case 6:
                 {
                     packet.Add((byte)type);
-                    packet.Add((byte)int.Parse(data.Substring(0, 1)));
-                    packet.Add((byte)int.Parse(data.Substring(1, 1)));
+                    packet.Add((byte)int.Parse(data.Substring(0, 1))); //pos
+                    packet.Add((byte)int.Parse(data.Substring(1, 1))); //fold or check
+                    packet.AddRange(BitConverter.GetBytes(int.Parse(data.Substring(2)))); //price
+
+                    break;
+                }
+
+            //send Winner pos
+            case 7:
+                {
+                    packet.Add((byte)type);
+                    packet.Add((byte)int.Parse(data.Substring(0, 1))); //winner pos
+
                     break;
                 }
         }
@@ -276,6 +310,7 @@ public class GameManager : MonoBehaviour
                     if(state == 0)
                     {
                         playerState[pos] = 0;
+                        pokergame.FoldPlayer(pos);
                     }
                     else
                     {
@@ -288,14 +323,60 @@ public class GameManager : MonoBehaviour
                         curRound += 1;
                         if(curRound == Rounds.FIRST)
                         {
-                            pokergame.SetFirstRoundCard();
+                            for(int i = 0; i < 3; i++)
+                            {
+                                Card c = pokergame.SetCommCard_Server(i);
+                                string info = ((int)c.suit).ToString() + c.no.ToString();
+                                networkManager.SendDatatoClientAll(writeServerData(4, info));
+                            }
+                            uiManager.SetFoldBTNInteractable(true);
+                            uiManager.SetCheckBTNInteractable(true);
+                        }
+                        else if (curRound == Rounds.SECOND)
+                        {
+                            Card c = pokergame.SetCommCard_Server(3);
+                            string info = ((int)c.suit).ToString() + c.no.ToString();
+                            networkManager.SendDatatoClientAll(writeServerData(4, info));
+
+                            uiManager.SetFoldBTNInteractable(true);
+                            uiManager.SetCheckBTNInteractable(true);
+                        }
+                        else if (curRound == Rounds.THIRD)
+                        {
+                            Card c = pokergame.SetCommCard_Server(4);
+                            string info = ((int)c.suit).ToString() + c.no.ToString();
+                            networkManager.SendDatatoClientAll(writeServerData(4, info));
+
+                            uiManager.SetFoldBTNInteractable(true);
+                            uiManager.SetCheckBTNInteractable(true);
+
+
+                        }
+                        else if(curRound == Rounds.FINALL)
+                        {
+                            List<PlayerInfo> playerCardInfo;
+                            int winnerIndex = pokergame.FindWinner(out playerCardInfo);
+                            networkManager.SendDatatoClientAll(writeServerData(7, winnerIndex.ToString()));
+                            for (int i = 0; i < playerState.Count; i++)
+                            {
+                                if (playerState[i] == 1)
+                                {
+                                    string card1 = i.ToString() + ((int)playerCardInfo[i].Card1.suit).ToString()
+                                        + playerCardInfo[i].Card1.no.ToString();
+                                    networkManager.SendDatatoClientAll(writeServerData(5, card1));
+
+                                    string card2 = i.ToString() + ((int)playerCardInfo[i].Card2.suit).ToString()
+                                        + playerCardInfo[i].Card2.no.ToString();
+                                    networkManager.SendDatatoClientAll(writeServerData(5, card2));
+
+                                }
+                            }
                         }
 
-                        uiManager.SetFoldBTNInteractable(true);
-                        uiManager.SetCheckBTNInteractable(true);
+
                     }
 
-                    string stateData = pos.ToString() + state.ToString();
+                    string stateData = pos.ToString() + state.ToString() + price.ToString();
 
                     networkManager.SendDatatoClientAll(writeServerData(6, stateData));
                     break;
@@ -426,6 +507,10 @@ public class GameManager : MonoBehaviour
     int recieveMyCard = 0;
     Card card1;
     Card card2;
+
+    int recieveCommCard = 0;
+
+    int recievePlayerCard = 0;
     //서버에서 받을 stream 조작
     void ReadRecievedServerData(byte[] packet)
     {
@@ -454,7 +539,8 @@ public class GameManager : MonoBehaviour
             //Game Start
             case 2:
                 {
-                    pokergame.SetCommunityCard_Client();
+                    InitPlayerState();
+                    pokergame.InitCommunityCard_Client();
                     break;
                 }
             //My Card Get
@@ -488,18 +574,92 @@ public class GameManager : MonoBehaviour
 
                     break;
                 }
+            //Community Card Set
+            case 4:
+                {
+                    int cSuit = Convert.ToInt32(data[0]);
+                    int cNO = Convert.ToInt32(data[1]);
+                    
+                    Card c = new Card((Card.SUIT)cSuit, cNO, true);
+                    pokergame.SetCommCard_Client(recieveCommCard, c);
+                    recieveCommCard++;
+
+                    if(recieveCommCard == 5)
+                        pokergame.SetResult_Client(mypos);
+
+
+                    break;
+                }
+            //Got Lived Player's card
+            case 5:
+                {
+                    int pos = Convert.ToInt32(data[0]);
+                    int cSuit = Convert.ToInt32(data[1]);
+                    int cNO = Convert.ToInt32(data[2]);
+
+                    Card card = new Card((Card.SUIT)cSuit, cNO, false);
+
+                    if(recievePlayerCard == 0)
+                    {
+                        pokergame.ShowPlayerCard_Other(pos, recievePlayerCard, card);
+
+                        recievePlayerCard++;
+                    }
+                    else
+                    {
+                        pokergame.ShowPlayerCard_Other(pos, recievePlayerCard, card);
+
+                        recievePlayerCard = 0;
+                    }
+                    break;
+                }
             //someone has bet
             case 6:
                 {
                     int pos = Convert.ToInt32(data[0]);
                     int state = Convert.ToInt32(data[1]);
+                    int price = BitConverter.ToInt32(data.Skip(2).ToArray());
 
-                    if(pos + 1 == mypos)
+                    //fold
+                    if (state == 0)
                     {
-                        //Fold, Check 버튼 활성화
-                        uiManager.SetFoldBTNInteractable(true);
-                        uiManager.SetCheckBTNInteractable(true);
+                        playerState[pos] = 0;
+                        pokergame.FoldPlayer(pos);
                     }
+                    //check
+                    else
+                    {
+                        playerState[pos] = 1;
+                    }
+
+                    if (pos + 1 == mypos)
+                    {
+                        curRound++;
+                        if(curRound == Rounds.THIRD)
+                        {
+                            //pokergame.SetResult_Client(mypos);
+                        }
+
+                        if (playerState[mypos] == 0)
+                        {
+                            //이전에 fold를 했으면 다시 폴드 주고 넘어감
+                            string stateData = mypos.ToString() + 0.ToString() + 0.ToString();
+                            networkManager.SendDatatoServer(writeClientData(2, stateData));
+                        }
+                        else
+                        {
+                            //Fold, Check 버튼 활성화
+                            uiManager.SetFoldBTNInteractable(true);
+                            uiManager.SetCheckBTNInteractable(true);
+                        }
+                    }
+                    break;
+                }
+            //get winner pos
+            case 7:
+                {
+                    int pos = Convert.ToInt32(data[0]);
+                    pokergame.ShowWinner(pos);
                     break;
                 }
 

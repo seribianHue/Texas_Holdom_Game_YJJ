@@ -6,5 +6,5 @@ public enum HAND
 
 public enum Rounds
 {
-    SETTING, FIRST, SECOND, THIRD
+    SETTING, FIRST, SECOND, THIRD, FINALL
 }

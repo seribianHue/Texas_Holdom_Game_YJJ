@@ -62,6 +62,8 @@ public class PlayerInfo
 
     public Card highestCard;
 
+    public bool isFold;
+
     public PlayerInfo(string player, Card card1, Card card2)
     {
         this.player = player;
@@ -198,70 +200,81 @@ public class PokerGame : MonoBehaviour
         }
     }
 
-    public void SetFirstRoundCard()
+    //커뮤니티 카드 보이기 _ 서버
+    public Card SetCommCard_Server(int index)
     {
-        for (int i = 0; i < 3; i++)
+        Destroy(communityCards[index].cardObj);
+        GameObject cObj = GetCardPrefab((int)communityCards[index].suit, communityCards[index].no - 2);
+        var c = Instantiate(cObj, cardPlaces[index]);
+        communityCards[index].cardObj = c;
+        return communityCards[index];
+    }
+
+    //커뮤니티 카드 설정 _ 클라(정보 무)
+    public void InitCommunityCard_Client()
+    {
+        for (int i = 0; i < communityCards.Length; i++)
         {
-            Destroy(communityCards[i].cardObj);
-            GameObject cObj = GetCardPrefab((int)communityCards[i].suit, communityCards[i].no - 2);
-            var c = Instantiate(cObj, cardPlaces[i]);
+            communityCards[i] = new Card((Card.SUIT)0, 14, true);
+            GameObject cObj = GetCardPrefab(0, 12);
+            var c = Instantiate(cObj, cardPlaces[i].position,
+                Quaternion.Euler(cObj.transform.rotation.eulerAngles + new Vector3(90, 0, 0)));
             communityCards[i].cardObj = c;
         }
     }
 
-    //커뮤니티 카드 설정 _ 클라(정보 무)
-    public void SetCommunityCard_Client()
+    //커뮤니티 카드 보이기 _ 클라
+    public void SetCommCard_Client(int index, Card card)
     {
-        for (int i = 0; i < communityCards.Length; i++)
+        Destroy(communityCards[index].cardObj);
+        communityCards[index] = card;
+        GameObject cObj = GetCardPrefab((int)card.suit, card.no - 2);
+        var c = Instantiate(cObj, cardPlaces[index]);
+        communityCards[index].cardObj = c;
+    }
+
+    /*    public void AddPlayerMe(int myIndex, int suit1, int NO1, int suit2, int NO2)
         {
-            GameObject cObj = GetCardPrefab(0, 12);
-            var c = Instantiate(cObj, cardPlaces[i].position,
-                Quaternion.Euler(cObj.transform.rotation.eulerAngles + new Vector3(90, 0, 0)));
+            playersInfo.Add(new PlayerInfo((myIndex + 1).ToString(), 
+                new Card((Card.SUIT)suit1, NO1, false), new Card((Card.SUIT)suit2, NO2, false)));
+            Find_Hand3(playersInfo[myIndex]);
+
+            //show player card
+            GameObject cObj1 = GetCardPrefab((int)playersInfo[myIndex].Card1.suit, playersInfo[myIndex].Card1.no - 2);
+            GameObject cObj2 = GetCardPrefab((int)playersInfo[myIndex].Card2.suit, playersInfo[myIndex].Card2.no - 2);
+            Instantiate(cObj1, playerPlace[myIndex].transform.GetChild(0));
+            Instantiate(cObj2, playerPlace[myIndex].transform.GetChild(1));
+
+            //show player highest card
+            GameObject cObjH = GetCardPrefab((int)playersInfo[myIndex].highestCard.suit, playersInfo[myIndex].highestCard.no - 2);
+            Instantiate(cObjH, playerPlace[myIndex].transform.GetChild(2));
+
+            //show player hand
+            playerPlace[myIndex].transform.GetChild(3).GetComponent<TextMeshPro>().text = playersInfo[myIndex].playerHand.ToString();
+
         }
-    }
 
-/*    public void AddPlayerMe(int myIndex, int suit1, int NO1, int suit2, int NO2)
-    {
-        playersInfo.Add(new PlayerInfo((myIndex + 1).ToString(), 
-            new Card((Card.SUIT)suit1, NO1, false), new Card((Card.SUIT)suit2, NO2, false)));
-        Find_Hand3(playersInfo[myIndex]);
+        public void AddPlayer(int playerIndex)
+        {
+            playersInfo.Add(new PlayerInfo((playerIndex + 1).ToString(), GetRandCards(1)[0], GetRandCards(1)[0]));
+            playersInfo[playerIndex].Card1.isCommunity = false;
+            playersInfo[playerIndex].Card2.isCommunity = false;
+            Find_Hand3(playersInfo[playerIndex]);
 
-        //show player card
-        GameObject cObj1 = GetCardPrefab((int)playersInfo[myIndex].Card1.suit, playersInfo[myIndex].Card1.no - 2);
-        GameObject cObj2 = GetCardPrefab((int)playersInfo[myIndex].Card2.suit, playersInfo[myIndex].Card2.no - 2);
-        Instantiate(cObj1, playerPlace[myIndex].transform.GetChild(0));
-        Instantiate(cObj2, playerPlace[myIndex].transform.GetChild(1));
+            //show player card
+            GameObject cObj1 = GetCardPrefab((int)playersInfo[playerIndex].Card1.suit, playersInfo[playerIndex].Card1.no - 2);
+            GameObject cObj2 = GetCardPrefab((int)playersInfo[playerIndex].Card2.suit, playersInfo[playerIndex].Card2.no - 2);
+            Instantiate(cObj1, playerPlace[playerIndex].transform.GetChild(0));
+            Instantiate(cObj2, playerPlace[playerIndex].transform.GetChild(1));
 
-        //show player highest card
-        GameObject cObjH = GetCardPrefab((int)playersInfo[myIndex].highestCard.suit, playersInfo[myIndex].highestCard.no - 2);
-        Instantiate(cObjH, playerPlace[myIndex].transform.GetChild(2));
+            //show player highest card
+            GameObject cObjH = GetCardPrefab((int)playersInfo[playerIndex].highestCard.suit, playersInfo[playerIndex].highestCard.no - 2);
+            Instantiate(cObjH, playerPlace[playerIndex].transform.GetChild(2));
 
-        //show player hand
-        playerPlace[myIndex].transform.GetChild(3).GetComponent<TextMeshPro>().text = playersInfo[myIndex].playerHand.ToString();
+            //show player hand
+            playerPlace[playerIndex].transform.GetChild(3).GetComponent<TextMeshPro>().text = playersInfo[playerIndex].playerHand.ToString();
 
-    }
-
-    public void AddPlayer(int playerIndex)
-    {
-        playersInfo.Add(new PlayerInfo((playerIndex + 1).ToString(), GetRandCards(1)[0], GetRandCards(1)[0]));
-        playersInfo[playerIndex].Card1.isCommunity = false;
-        playersInfo[playerIndex].Card2.isCommunity = false;
-        Find_Hand3(playersInfo[playerIndex]);
-
-        //show player card
-        GameObject cObj1 = GetCardPrefab((int)playersInfo[playerIndex].Card1.suit, playersInfo[playerIndex].Card1.no - 2);
-        GameObject cObj2 = GetCardPrefab((int)playersInfo[playerIndex].Card2.suit, playersInfo[playerIndex].Card2.no - 2);
-        Instantiate(cObj1, playerPlace[playerIndex].transform.GetChild(0));
-        Instantiate(cObj2, playerPlace[playerIndex].transform.GetChild(1));
-
-        //show player highest card
-        GameObject cObjH = GetCardPrefab((int)playersInfo[playerIndex].highestCard.suit, playersInfo[playerIndex].highestCard.no - 2);
-        Instantiate(cObjH, playerPlace[playerIndex].transform.GetChild(2));
-
-        //show player hand
-        playerPlace[playerIndex].transform.GetChild(3).GetComponent<TextMeshPro>().text = playersInfo[playerIndex].playerHand.ToString();
-
-    }*/
+        }*/
 
     //각 플레이어 카드 설정 _ 서버(모든 정보 유)
     public void SetPlayerCard_Host(string nickname, int pos)
@@ -276,7 +289,7 @@ public class PokerGame : MonoBehaviour
 
         ShowCardFront(playersInfo[pos], pos);
     }
-    
+    //서버장 이외의 카드 설정
     public List<int> SetPlayerCard_Guest(string nickname, int pos)
     {
         Card c1 = GetRandCards(1)[0];
@@ -288,14 +301,75 @@ public class PokerGame : MonoBehaviour
         Find_Hand3(playersInfo[pos]);
 
         ShowCardFront(playersInfo[pos], pos);
+        //ShowCardBack(playersInfo[pos], pos);
 
         List<int> cardInfo = new List<int>()
                     { ((int)playersInfo[pos].Card1.suit), playersInfo[pos].Card1.no,
                     (int) playersInfo[pos].Card2.suit, playersInfo[pos].Card2.no};
-/*        string cardInfo = ((int)playersInfo[pos].Card1.suit).ToString() + playersInfo[pos].Card1.no.ToString("D2") +
-            ((int)playersInfo[pos].Card2.suit).ToString() + playersInfo[pos].Card2.no.ToString("D2");*/
 
         return cardInfo;
+    }
+
+    //폴드한 플레이어 설정
+    public void FoldPlayer(int pos)
+    {
+        playersInfo[pos].isFold = true;
+    }
+
+    //모든 플레이어 카드 계산
+    public void SetResultAll()
+    {
+        for(int i = 0; i < playersInfo.Count; i++)
+        {
+            Find_Hand3(playersInfo[i]);
+            playerPlace[i].transform.GetChild(3).GetComponent<TextMeshPro>().text
+                = playersInfo[i].playerHand.ToString();
+            Card highCard = playersInfo[i].highestCard;
+            GameObject cObj = GetCardPrefab((int)highCard.suit, highCard.no - 2);
+            var c = Instantiate(cObj, playerPlace[i].transform.GetChild(2));
+        }
+    }
+
+    //승자 계산
+    public int FindWinner(out List<PlayerInfo> playerCardInfo)
+    {
+        PlayerInfo[] winners = playersInfo.Where(n => n.playerHand == playersInfo.Min(x => x.playerHand))
+            .ToArray();
+        /*        if (winners.Length > 1)
+                {
+                    winners = winners.OrderBy(c => c.highestCard.suit).OrderByDescending(c => c.highestCard.no).ToArray();
+                    for(int i = 0; i < winners.Length; i++)
+                    {
+                        if (!winners[i].isFold)
+                        {
+                            winner = winners[i];
+                            break;
+                        }
+                    }
+
+                }
+                else { winner = winners[0]; }*/
+
+        winners = winners.OrderBy(c => c.highestCard.suit).OrderByDescending(c => c.highestCard.no)
+            .ToArray();
+        for (int i = 0; i < winners.Length; i++)
+        {
+            if (!winners[i].isFold)
+            {
+                winner = winners[i];
+                break;
+            }
+        }
+        winnerText.text = "Winner : " + winner.Player;
+        playerCardInfo = playersInfo;
+        return playersInfo.FindIndex(n => n.Player == winner.Player);
+    }
+
+    //승자 보여주기 _ 클라
+    public void ShowWinner(int pos)
+    {
+        winner = playersInfo[pos];
+        winnerText.text = "Winner : " + winner.Player;
     }
 
     //카드 보여주기 _ 앞, 뒤
@@ -327,12 +401,45 @@ public class PokerGame : MonoBehaviour
         ShowCardFront(playersInfo[pos], pos);
     }
 
+    //클라 자신 패 계산, 높은 카드 보이기
+    public void SetResult_Client(int mypos)
+    {
+        Find_Hand3(playersInfo[mypos]);
+        playerPlace[mypos].transform.GetChild(3).GetComponent<TextMeshPro>().text
+            = playersInfo[mypos].playerHand.ToString();
+        Card highCard = playersInfo[mypos].highestCard;
+        GameObject cObj = GetCardPrefab((int)highCard.suit, highCard.no - 2);
+        var c = Instantiate(cObj, playerPlace[mypos].transform.GetChild(2));
+    }
+
+    //다른 사람 정보 모르게 각 플레이어 카드 설정
     public void SetPlayerCard_Other(string nickname, int pos)
     {
-        playersInfo.Add(new PlayerInfo(nickname, new Card((Card.SUIT)0, 14, false),
-            new Card((Card.SUIT)0, 14, false)));
+        playersInfo.Add(new PlayerInfo(nickname, new Card((Card.SUIT)0, 14, true),
+            new Card((Card.SUIT)0, 14, true)));
 
         ShowCardBack(playersInfo[pos], pos);
+    }
+
+    //다른 플레이어 카드 설정 _ 클라
+    public void ShowPlayerCard_Other(int pos, int cardnum, Card card)
+    {
+        if(cardnum == 0)
+        {
+            playersInfo[pos].Card1 = card;
+            Destroy(playersInfo[pos].Card1.cardObj);
+            GameObject cObj = GetCardPrefab((int)playersInfo[pos].Card1.suit, playersInfo[pos].Card1.no - 2);
+            var c = Instantiate(cObj, playerPlace[pos].transform.GetChild(0));
+            playersInfo[pos].Card1.cardObj = c;
+        }
+        else
+        {
+            playersInfo[pos].Card2 = card;
+            Destroy(playersInfo[pos].Card2.cardObj);
+            GameObject cObj = GetCardPrefab((int)playersInfo[pos].Card2.suit, playersInfo[pos].Card2.no - 2);
+            var c = Instantiate(cObj, playerPlace[pos].transform.GetChild(1));
+            playersInfo[pos].Card2.cardObj = c;
+        }
     }
 
 
@@ -347,19 +454,6 @@ public class PokerGame : MonoBehaviour
             Quaternion.Euler(playerPlace[index + 1].transform.GetChild(1).rotation.eulerAngles ));
         //Instantiate(cObj2, playerPlace[index + 1].transform.GetChild(1));
 
-    }
-
-    public void FindWinner()
-    {
-        //winner
-        PlayerInfo[] winners = playersInfo.Where(n => n.playerHand == playersInfo.Min(x => x.playerHand)).ToArray();
-        if (winners.Length > 1)
-        {
-            winners = winners.OrderBy(c => c.highestCard.suit).OrderByDescending(c => c.highestCard.no).ToArray();
-            winner = winners[0];
-        }
-        else { winner = winners[0]; }
-        winnerText.text = "Winner : " + winner.Player;
     }
 
 
