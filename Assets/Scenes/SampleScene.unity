@@ -448,7 +448,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -100, y: 30}
+  m_AnchoredPosition: {x: -100, y: 470}
   m_SizeDelta: {x: 150, y: 30}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &75531289
@@ -6913,7 +6913,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   LobbyUI: {fileID: 2125808158}
   StartGameBTN: {fileID: 1939165727}
-  SendMyInfoBTN: {fileID: 75531287}
+  QuitBTN: {fileID: 75531287}
   FoldBTN: {fileID: 1322192645}
   CheckBTN: {fileID: 2105981955}
 --- !u!4 &1564020099

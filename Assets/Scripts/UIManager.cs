@@ -34,8 +34,8 @@ public class UIManager : MonoBehaviour
     [SerializeField] GameObject StartGameBTN;
     public void SetStartGameBTN(bool onoff) { StartGameBTN.SetActive(onoff); }
 
-    [SerializeField] GameObject SendMyInfoBTN;
-    public void SetSendMyInfoBTN(bool onoff) {  SendMyInfoBTN.SetActive(onoff); }
+    [SerializeField] GameObject QuitBTN;
+    public void SetQuitBTN(bool onoff) {  QuitBTN.SetActive(onoff); }
 
     //Fold Check Button
     [SerializeField] Button FoldBTN;
