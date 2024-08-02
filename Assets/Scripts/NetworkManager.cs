@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Text;
 using TMPro;
 using Unity.Collections;
 using Unity.Networking.Transport;
@@ -30,20 +31,26 @@ public class NetworkManager : MonoBehaviour
     }
 
     //클라 -> 서버 정보 보내기 (packet)
-    public void SendDatatoServer(byte[] packet)
+    public void SendDatatoServer<T>(T packet)
     {
-        m_Client.SendReq(packet);
+        string jsonString = JsonUtility.ToJson(packet);
+        byte[] byteData = Encoding.UTF8.GetBytes(jsonString);
+        m_Client.SendReq(byteData);
     }
 
     //서버 -> 모든 클라에게 정보 보내기
-    public void SendDatatoClientAll(byte[] packet)
+    public void SendDatatoClientAll<T>(T packet)
     {
-        m_Server.SendAcktoAll(packet);
+        string jsonString = JsonUtility.ToJson(packet);
+        byte[] byteData = Encoding.UTF8.GetBytes(jsonString);
+        m_Server.SendAcktoAll(byteData);
     }
     //서버 -> 특정 클라에게 정보 보내기
-    public void SendDatatoClient(byte[] packet, int pos)
+    public void SendDatatoClient<T>(T packet, int pos)
     {
-        m_Server.SendAck(packet, pos);
+        string jsonString = JsonUtility.ToJson(packet);
+        byte[] byteData = Encoding.UTF8.GetBytes(jsonString);
+        m_Server.SendAck(byteData, pos);
     }
 
     //서버 종료

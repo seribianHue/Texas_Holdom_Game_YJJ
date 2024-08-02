@@ -49,6 +49,21 @@ public class GameManager : MonoBehaviour
         if (m_serverNetworkDisconnectEvent == null)
             m_serverNetworkDisconnectEvent = new ServerNetworkDisconnectEvent();
         m_serverNetworkDisconnectEvent.AddListener(ServerNetworkDisconnected);
+
+        mapPackets = new Dictionary<PacketID, PacketFunc>()
+        {
+            { PacketID.REQ_JOINGAME, Req_JoinGame },
+            { PacketID.REQ_QUIT, Req_Quit},
+            { PacketID.REQ_CHANGESTATE, Req_ChangeState},
+            { PacketID.ACK_JOIN_PLAYER, Ack_JoinPlayer},
+            { PacketID.ACK_QUIT_SOMEBODY, Ack_QuitSomeBody},
+            { PacketID.ACK_GAME_START, Ack_GameStart},
+            { PacketID.ACK_PERSONAL_CARD, Ack_PersonalCard},
+            { PacketID.ACK_TABLE_CARD, Ack_TableCard},
+            { PacketID.ACK_ANOTHER_CARD, Ack_AnotherCard},
+            { PacketID.ACK_PLAYER_STATE_INFO, Ack_PlayerStateInfo},
+            { PacketID.ACK_WINNER_INFO, Ack_WinnerInfo}
+        };
     }
 
     [SerializeField] PokerGame pokergame;
@@ -117,7 +132,9 @@ public class GameManager : MonoBehaviour
     #region Server, Client Network Disconnected
     public void ClientNetworkDisconnected()
     {
-        networkManager.SendDatatoServer(writeClientData_Json(1, mypos.ToString()));
+        P_REQ_QuitGame packetQuit = new P_REQ_QuitGame((byte)mypos);
+        networkManager.SendDatatoServer(packetQuit);
+
         playerInfo.Clear();
         pokergame.SetPlayerNicknameAll(playerInfo);
 
@@ -187,14 +204,14 @@ public class GameManager : MonoBehaviour
             playerState[0] = 0;
             uiManager.SetFoldBTNInteractable(false);
             uiManager.SetCheckBTNInteractable(false);
-            
-            string info = mypos.ToString() + 0.ToString() + 0.ToString();
-            networkManager.SendDatatoClientAll(writeServerData_Json(6, info));
+            //send packet
+            P_ACK_PlayerState packet = new P_ACK_PlayerState((byte)mypos, 0, 0);
+            networkManager.SendDatatoClientAll(packet);
         }
         else
         {
-            string info = mypos.ToString() + 0.ToString() + 0.ToString();
-            networkManager.SendDatatoServer(writeClientData_Json(2, info));
+            P_REQ_ChangeState statePacket = new P_REQ_ChangeState((byte)mypos, (byte)0, 0);
+            networkManager.SendDatatoServer(statePacket);
 
             uiManager.SetFoldBTNInteractable(false);
             uiManager.SetCheckBTNInteractable(false);
@@ -208,14 +225,14 @@ public class GameManager : MonoBehaviour
             playerState[0] = 1;
             uiManager.SetFoldBTNInteractable(false);
             uiManager.SetCheckBTNInteractable(false);
-
-            string info = mypos.ToString() + 1.ToString() + 0.ToString();
-            networkManager.SendDatatoClientAll(writeServerData_Json(6, info));
+            //send packet
+            P_ACK_PlayerState packet = new P_ACK_PlayerState((byte)mypos, 1, 0);
+            networkManager.SendDatatoClientAll(packet);
         }
         else
         {
-            string info = mypos.ToString() + 1.ToString() + 0.ToString();
-            networkManager.SendDatatoServer(writeClientData_Json(2, info));
+            P_REQ_ChangeState statePacket = new P_REQ_ChangeState((byte)mypos, (byte)1, 0);
+            networkManager.SendDatatoServer(statePacket);
 
             uiManager.SetFoldBTNInteractable(false);
             uiManager.SetCheckBTNInteractable(false);
@@ -239,253 +256,161 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    public delegate void PacketFunc(dynamic dynamicData);
+    private Dictionary<PacketID, PacketFunc> mapPackets;
 
     #region Server Methods
 
     int sendCommCard = 0;
-    //서버에서 보낼 stream 제작 with Json
-    byte[] writeServerData_Json(int id, string data)
-    {
-        byte[] byteData = new byte[0];
-        switch ((ServerToClient)id)
-        {
-            case ServerToClient.ACK_JOIN_PLAYER:
-                {
-                    P_ACK_JoinPlayer packet =
-                        new P_ACK_JoinPlayer((byte)id,
-                        (byte)int.Parse(data.Substring(0, 1)),  //pos
-                        data.Substring(1));                     //nickname
-
-                    string jsonData = JsonUtility.ToJson(packet);
-                    byteData = Encoding.UTF8.GetBytes(jsonData);
-                    break;
-                }
-            case ServerToClient.ACK_QUIT_SOMEBODY:
-                {
-                    P_ACK_QuitSomebody packet =
-                        new P_ACK_QuitSomebody((byte)id, 
-                        (byte)int.Parse(data.Substring(0, 1))); //pos
-
-                    string jsonData = JsonUtility.ToJson(packet);
-                    byteData = Encoding.UTF8.GetBytes(jsonData);
-                    break;
-                }
-            case ServerToClient.ACK_GAME_START:
-                {
-                    P_ACK_GameStart packet =
-                        new P_ACK_GameStart((byte)id);
-
-                    string jsonData = JsonUtility.ToJson(packet);
-                    byteData = Encoding.UTF8.GetBytes(jsonData);
-                    break;
-                }
-            case ServerToClient.ACK_PERSONAL_CARD:
-                {
-                    P_ACK_PersonalCard packet = 
-                        new P_ACK_PersonalCard((byte)id,        //id
-                        (byte)int.Parse(data.Substring(0, 1)),  //suit
-                        (byte)int.Parse(data.Substring(1)));    //no
-
-                    string jsonData = JsonUtility.ToJson(packet);
-                    byteData = Encoding.UTF8.GetBytes(jsonData);
-                    break;
-                }
-            case ServerToClient.ACK_TABLE_CARD:
-                {
-                    P_ACK_TableCard packet =
-                        new P_ACK_TableCard((byte)id,           //id
-                        (byte)int.Parse(data.Substring(0, 1)),  //suit
-                        (byte)int.Parse(data.Substring(1)));    //no
-
-                    //test
-                    sendCommCard++;
-                    if (sendCommCard == 5)
-                    {
-                        pokergame.SetResultAll();
-                    }
-
-                    string jsonData = JsonUtility.ToJson(packet);
-                    byteData = Encoding.UTF8.GetBytes(jsonData);
-                    break;
-                }
-            case ServerToClient.ACK_ANOTHER_CARD:
-                {
-                    P_ACK_AnotherCard packet =
-                        new P_ACK_AnotherCard((byte)id,
-                        (byte)int.Parse(data.Substring(0, 1)),  //player index
-                        (byte)int.Parse(data.Substring(1, 1)),  //suit
-                        (byte)int.Parse(data.Substring(2)));    //no
-
-                    string jsonData = JsonUtility.ToJson(packet);
-                    byteData = Encoding.UTF8.GetBytes(jsonData);
-                    break;
-                }
-            case ServerToClient.ACK_PLAYER_STATE_INFO:
-                {
-                    P_ACK_PlayerState packet =
-                        new P_ACK_PlayerState((byte)id,
-                        (byte)int.Parse(data.Substring(0, 1)),  //pos
-                        (byte)int.Parse(data.Substring(1, 1)),  //fold or check
-                        int.Parse(data.Substring(2)));          //price
-
-                    string jsonData = JsonUtility.ToJson(packet);
-                    byteData = Encoding.UTF8.GetBytes(jsonData);
-                    break;
-                }
-            case ServerToClient.ACK_WINNER_INFO:
-                {
-                    P_ACK_Winner packet =
-                        new P_ACK_Winner((byte)id,
-                        (byte)int.Parse(data.Substring(0, 1))); //winner pos
-
-                    string jsonData = JsonUtility.ToJson(packet);
-                    byteData = Encoding.UTF8.GetBytes(jsonData);
-                    break;
-                }
-        }
-        return byteData;
-    }
 
     //클라에서 받을 stream 조작
     void ReadRecievedClientData_Json(byte[] data)
     {
         string jsonString = Encoding.UTF8.GetString(data);
         dynamic dynamicData = JsonConvert.DeserializeObject(jsonString);
-        //dynamic dynamicData = JsonSerializer.CreateJsonReader().FromJson<dynamic>(jsonString);
 
-        switch ((ClientToServer)dynamicData.id)
+        if(mapPackets.ContainsKey((PacketID)dynamicData.id))
+            mapPackets[(PacketID)dynamicData.id](dynamicData);
+
+/*        switch ((PacketID)dynamicData.id)
         {
-            case ClientToServer.REQ_JOINGAME:
-                {
-                    string nickname = dynamicData.nickName;
-                    //test
-                    print(nickname);
+            case PacketID.REQ_JOINGAME: Req_JoinGame(dynamicData); break;
+            case PacketID.REQ_QUIT: Req_Quit(dynamicData); break;
+            case PacketID.REQ_CHANGESTATE: Req_ChangeState(dynamicData); break;
+        }*/
+    }
 
-                    AddPlayer(nickname);
-                    pokergame.SetPlayerNickname(playerInfo.Count - 1, nickname);
+    void Req_JoinGame(dynamic dynamicData)
+    {
+        string nickname = dynamicData.nickName;
+        //test
+        print(nickname);
 
-                    //모든 클라에게 새 플레이어 정보 보내기
-                    string newPlayerData = (playerInfo.Count - 1).ToString() + nickname;
-                    for (int i = 1; i < playerInfo.Count; i++)
-                    {
-                        if (i != playerInfo.Count - 1)
-                        {
-                            networkManager.SendDatatoClient(writeServerData_Json(0, newPlayerData), i);
+        AddPlayer(nickname);
+        pokergame.SetPlayerNickname(playerInfo.Count - 1, nickname);
 
-                        }
-                    }
+        //모든 클라에게 새 플레이어 정보 보내기
+        P_ACK_JoinPlayer packet = new P_ACK_JoinPlayer((byte)(playerInfo.Count - 1), nickname);
+        for (int i = 1; i < playerInfo.Count; i++)
+        {
+            if (i != playerInfo.Count - 1)
+            {
+                networkManager.SendDatatoClient(packet, i);
 
-                    //새 멤버한테 기존 사람들 정보 알려주기
-                    for (int i = 0; i < playerInfo.Count; i++)
-                    {
-                        string playerData = i.ToString() + playerInfo[i];
-                        networkManager.SendDatatoClient
-                            (writeServerData_Json(0, playerData), playerInfo.Count - 1);
-                    }
-
-                    break;
-                }
-            case ClientToServer.REQ_QUIT:
-                {
-                    int pos = Convert.ToInt32(dynamicData.index);
-                    networkManager.DisconnectClient(pos);
-
-                    playerInfo.RemoveAt(pos);
-                    pokergame.SetPlayerNicknameAll(playerInfo);
-                    if (playerInfo.Count > 1)
-                        networkManager.SendDatatoClientAll(writeServerData_Json(1, pos.ToString()));
-                    break;
-                }
-            case ClientToServer.REQ_CHANGESTATE:
-                {
-                    int pos = Convert.ToInt32(dynamicData.player_index);
-                    int state = Convert.ToInt32(dynamicData.state);
-                    int price = dynamicData.price;
-
-                    if (state == 0)
-                    {
-                        playerState[pos] = 0;
-                        pokergame.FoldPlayer(pos);
-                    }
-                    else
-                    {
-                        playerState[pos] = 1;
-                    }
-
-                    if (pos == playerState.Count - 1)
-                    {
-                        //start next round
-                        curRound += 1;
-                        if (curRound == Rounds.FIRST)
-                        {
-                            for (int i = 0; i < 3; i++)
-                            {
-                                Card c = pokergame.SetCommCard_Server(i);
-                                string info = ((int)c.suit).ToString() + c.no.ToString();
-                                networkManager.SendDatatoClientAll(writeServerData_Json(4, info));
-                            }
-                            uiManager.SetFoldBTNInteractable(true);
-                            uiManager.SetCheckBTNInteractable(true);
-                        }
-                        else if (curRound == Rounds.SECOND)
-                        {
-                            Card c = pokergame.SetCommCard_Server(3);
-                            string info = ((int)c.suit).ToString() + c.no.ToString();
-                            networkManager.SendDatatoClientAll(writeServerData_Json(4, info));
-
-                            uiManager.SetFoldBTNInteractable(true);
-                            uiManager.SetCheckBTNInteractable(true);
-                        }
-                        else if (curRound == Rounds.THIRD)
-                        {
-                            Card c = pokergame.SetCommCard_Server(4);
-                            string info = ((int)c.suit).ToString() + c.no.ToString();
-                            networkManager.SendDatatoClientAll(writeServerData_Json(4, info));
-
-                            uiManager.SetFoldBTNInteractable(true);
-                            uiManager.SetCheckBTNInteractable(true);
-
-
-                        }
-                        else if (curRound == Rounds.FINALL)
-                        {
-                            List<PlayerInfo> playerCardInfo;
-                            int winnerIndex = pokergame.FindWinner(out playerCardInfo);
-                            networkManager.SendDatatoClientAll(writeServerData_Json(7, winnerIndex.ToString()));
-                            for (int i = 0; i < playerState.Count; i++)
-                            {
-                                if (playerState[i] == 1)
-                                {
-                                    string card1 = i.ToString() + ((int)playerCardInfo[i].Card1.suit).ToString()
-                                        + playerCardInfo[i].Card1.no.ToString();
-                                    networkManager.SendDatatoClientAll(writeServerData_Json(5, card1));
-
-                                    string card2 = i.ToString() + ((int)playerCardInfo[i].Card2.suit).ToString()
-                                        + playerCardInfo[i].Card2.no.ToString();
-                                    networkManager.SendDatatoClientAll(writeServerData_Json(5, card2));
-
-                                }
-                            }
-                        }
-
-
-                    }
-
-                    string stateData = pos.ToString() + state.ToString() + price.ToString();
-
-                    networkManager.SendDatatoClientAll(writeServerData_Json(6, stateData));
-                    break;
-
-                }
+            }
         }
+
+        //새 멤버한테 기존 사람들 정보 알려주기
+        for (int i = 0; i < playerInfo.Count; i++)
+        {
+            P_ACK_JoinPlayer packet1 = new P_ACK_JoinPlayer((byte)i, playerInfo[i]);
+            networkManager.SendDatatoClient(packet1, playerInfo.Count - 1);
+        }
+    }
+    void Req_Quit(dynamic dynamicData)
+    {
+        int pos = Convert.ToInt32(dynamicData.index);
+        networkManager.DisconnectClient(pos);
+
+        playerInfo.RemoveAt(pos);
+        pokergame.SetPlayerNicknameAll(playerInfo);
+        if (playerInfo.Count > 1)
+        {
+            P_ACK_QuitSomebody packet1 = new P_ACK_QuitSomebody((byte)pos);
+            networkManager.SendDatatoClientAll(packet1);
+        }
+    }
+    void Req_ChangeState(dynamic dynamicData)
+    {
+        int pos = Convert.ToInt32(dynamicData.player_index);
+        int state = Convert.ToInt32(dynamicData.state);
+        int price = dynamicData.price;
+
+        if (state == 0)
+        {
+            playerState[pos] = 0;
+            pokergame.FoldPlayer(pos);
+        }
+        else
+        {
+            playerState[pos] = 1;
+        }
+
+        if (pos == playerState.Count - 1)
+        {
+            //start next round
+            curRound += 1;
+            if (curRound == Rounds.FIRST)
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    Card c = pokergame.SetCommCard_Server(i);
+
+                    P_ACK_TableCard packet1 = new P_ACK_TableCard((byte)(Convert.ToInt32(c.suit)), (byte)c.no);
+                    networkManager.SendDatatoClientAll(packet1);
+                }
+                uiManager.SetFoldBTNInteractable(true);
+                uiManager.SetCheckBTNInteractable(true);
+            }
+            else if (curRound == Rounds.SECOND)
+            {
+                Card c = pokergame.SetCommCard_Server(3);
+
+                P_ACK_TableCard packet1 = new P_ACK_TableCard((byte)(Convert.ToInt32(c.suit)), (byte)c.no);
+                networkManager.SendDatatoClientAll(packet1);
+
+                uiManager.SetFoldBTNInteractable(true);
+                uiManager.SetCheckBTNInteractable(true);
+            }
+            else if (curRound == Rounds.THIRD)
+            {
+                Card c = pokergame.SetCommCard_Server(4);
+
+                P_ACK_TableCard packet1 = new P_ACK_TableCard((byte)(Convert.ToInt32(c.suit)), (byte)c.no);
+                networkManager.SendDatatoClientAll(packet1);
+
+                uiManager.SetFoldBTNInteractable(true);
+                uiManager.SetCheckBTNInteractable(true);
+
+
+            }
+            else if (curRound == Rounds.FINALL)
+            {
+                List<PlayerInfo> playerCardInfo;
+                int winnerIndex = pokergame.FindWinner(out playerCardInfo);
+
+                P_ACK_Winner packetWin = new P_ACK_Winner((byte)winnerIndex);
+                networkManager.SendDatatoClientAll(packetWin);
+                for (int i = 0; i < playerState.Count; i++)
+                {
+                    if (playerState[i] == 1)
+                    {
+                        P_ACK_AnotherCard packet1 = new P_ACK_AnotherCard(
+                            (byte)i, (byte)((int)playerCardInfo[i].Card1.suit), (byte)playerCardInfo[i].Card1.no);
+                        networkManager.SendDatatoClientAll(packet1);
+
+                        P_ACK_AnotherCard packet2 = new P_ACK_AnotherCard(
+                            (byte)i, (byte)((int)playerCardInfo[i].Card2.suit), (byte)playerCardInfo[i].Card2.no);
+                        networkManager.SendDatatoClientAll(packet2);
+
+                    }
+                }
+            }
+
+
+        }
+
+        P_ACK_PlayerState packet = new P_ACK_PlayerState((byte)pos, (byte)state, price);
+        networkManager.SendDatatoClientAll(packet);
     }
 
     //게임 시작 버튼
     public void GameStartBTN()
     {
         pokergame.SetCommunityCard_Server();
-        
-        networkManager.SendDatatoClientAll(writeServerData_Json(2, ""));
+
+        P_ACK_GameStart packet = new P_ACK_GameStart();
+        networkManager.SendDatatoClientAll(packet);
 
         for (int i = 0; i < playerInfo.Count; i++)
         {
@@ -494,11 +419,11 @@ public class GameManager : MonoBehaviour
             else
             {
                 List<int> cardinfo = pokergame.SetPlayerCard_Guest(playerInfo[i], i);
-                string card1 = cardinfo[0].ToString() + cardinfo[1].ToString();
-                string card2 = cardinfo[2].ToString() + cardinfo[3].ToString();
 
-                networkManager.SendDatatoClient(writeServerData_Json(3, card1), i);
-                networkManager.SendDatatoClient(writeServerData_Json(3, card2), i);
+                P_ACK_PersonalCard packet1 = new P_ACK_PersonalCard((byte)cardinfo[0], (byte)cardinfo[1]);
+                P_ACK_PersonalCard packet2 = new P_ACK_PersonalCard((byte)cardinfo[2], (byte)cardinfo[3]);
+                networkManager.SendDatatoClient(packet1, i);
+                networkManager.SendDatatoClient(packet2, i);
 
             }
         }
@@ -514,59 +439,13 @@ public class GameManager : MonoBehaviour
 
     #endregion
 
-
-
     #region Client Methods
 
     //클라에서 서버에게 자신의 정보 보내기
     public void SendMyInfotoServer()
     {
-        //networkManager.SendDatatoServer(writeClientData(0, nickName));
-        networkManager.SendDatatoServer(writeClientData_Json(0, nickName));
-    }
-
-    //클라에서 보낼 packet 제작
-    public byte[] writeClientData_Json(int id, string data)
-    {
-        byte[] byteData = new byte[0];
-        
-        switch((ClientToServer)id)
-        {
-            case ClientToServer.REQ_JOINGAME:
-                {
-                    P_REQ_JoinGame packet =
-                        new P_REQ_JoinGame((byte)id,
-                        data);  //nickname
-
-                    string jsonData = JsonUtility.ToJson(packet);
-                    byteData = Encoding.UTF8.GetBytes(jsonData);
-                    break;
-                }
-            case ClientToServer.REQ_QUIT:
-                {
-                    P_REQ_QuitGame packet =
-                        new P_REQ_QuitGame((byte)id,
-                        (byte)int.Parse(data.Substring(0, 1))); //mypos
-
-                    string jsonData = JsonUtility.ToJson(packet);
-                    byteData = Encoding.UTF8.GetBytes(jsonData);
-                    break;
-                }
-            case ClientToServer.REQ_CHANGESTATE:
-                {
-                    P_REQ_ChangeState packet =
-                        new P_REQ_ChangeState((byte)id,
-                        (byte)int.Parse(data.Substring(0, 1)),  //pos
-                        (byte)int.Parse(data.Substring(1, 1)),  //fold or check
-                        int.Parse(data.Substring(2)));          //price
-                    
-                    string jsonData = JsonUtility.ToJson(packet);
-                    byteData = Encoding.UTF8.GetBytes(jsonData);
-                    break;
-                }
-        }
-
-        return byteData;
+        P_REQ_JoinGame joinPacket = new P_REQ_JoinGame(nickName);
+        networkManager.SendDatatoServer(joinPacket);
     }
 
     //서버에서 받을 stream 조작
@@ -582,149 +461,150 @@ public class GameManager : MonoBehaviour
         string jsonString = Encoding.UTF8.GetString(data);
         dynamic dynamicData = JsonConvert.DeserializeObject(jsonString);
 
-        switch ((ServerToClient)dynamicData.id)
+        if (mapPackets.ContainsKey((PacketID)dynamicData.id))
+            mapPackets[(PacketID)dynamicData.id](dynamicData);
+
+
+/*        switch ((PacketID)dynamicData.id)
         {
-            case ServerToClient.ACK_JOIN_PLAYER:
-                {
-                    int pos = Convert.ToInt32(dynamicData.index);
-                    string nickname = dynamicData.nickName;
+            case PacketID.ACK_JOIN_PLAYER: Ack_JoinPlayer(dynamicData); break;
+            case PacketID.ACK_QUIT_SOMEBODY: Ack_QuitSomeBody(dynamicData); break;
+            case PacketID.ACK_GAME_START: Ack_GameStart(dynamicData); break;
+            case PacketID.ACK_PERSONAL_CARD: Ack_PersonalCard(dynamicData); break;
+            case PacketID.ACK_TABLE_CARD: Ack_TableCard(dynamicData); break;
+            case PacketID.ACK_ANOTHER_CARD: Ack_AnotherCard(dynamicData); break;
+            case PacketID.ACK_PLAYER_STATE_INFO: Ack_PlayerStateInfo(dynamicData); break;
+            case PacketID.ACK_WINNER_INFO: Ack_WinnerInfo(dynamicData); break;
+        }*/
+    }
 
-                    AddPlayer(nickname);
+    void Ack_JoinPlayer(dynamic dynamicData)
+    {
+        int pos = Convert.ToInt32(dynamicData.index);
+        string nickname = dynamicData.nickName;
 
-                    //test
-                    print(nickname);
-                    break;
-                }
-            case ServerToClient.ACK_QUIT_SOMEBODY:
-                {
-                    int pos = Convert.ToInt32(dynamicData.index);
+        AddPlayer(nickname);
 
-                    playerInfo.RemoveAt(pos);
-                    SetMyPos();
-                    pokergame.SetPlayerNicknameAll(playerInfo);
-                    break;
-                }
-            case ServerToClient.ACK_GAME_START:
-                {
-                    InitPlayerState();
-                    pokergame.InitCommunityCard_Client();
-                    break;
-                }
-            case ServerToClient.ACK_PERSONAL_CARD:
-                {
-                    int cSuit = Convert.ToInt32(dynamicData.shape);
-                    int cNO = Convert.ToInt32(dynamicData.number);
-                    recieveMyCard++;
+        //test
+        print(nickname);
+    }
+    void Ack_QuitSomeBody(dynamic dynamicData)
+    {
+        int pos = Convert.ToInt32(dynamicData.index);
 
-                    if (recieveMyCard == 1)
-                    {
-                        card1 = new Card((Card.SUIT)cSuit, cNO, false);
-                    }
-                    else if (recieveMyCard == 2)
-                    {
-                        card2 = new Card((Card.SUIT)cSuit, cNO, false);
+        playerInfo.RemoveAt(pos);
+        SetMyPos();
+        pokergame.SetPlayerNicknameAll(playerInfo);
+    }
+    void Ack_GameStart(dynamic dynamicData)
+    {
+        InitPlayerState();
+        pokergame.InitCommunityCard_Client();
+    }
+    void Ack_PersonalCard(dynamic dynamicData)
+    {
+        int cSuit = Convert.ToInt32(dynamicData.shape);
+        int cNO = Convert.ToInt32(dynamicData.number);
+        recieveMyCard++;
 
-                        for (int i = 0; i < playerInfo.Count; i++)
-                        {
-                            if (i == mypos)
-                            {
-                                pokergame.SetPlayerCard_Self(playerInfo[i], card1, card2, i);
-                            }
-                            else
-                            {
-                                pokergame.SetPlayerCard_Other(playerInfo[i], i);
-                            }
-                        }
-                    }
-
-
-                    break;
-                }
-            case ServerToClient.ACK_TABLE_CARD:
-                {
-                    int cSuit = Convert.ToInt32(dynamicData.shape);
-                    int cNO = Convert.ToInt32(dynamicData.number);
-
-                    Card c = new Card((Card.SUIT)cSuit, cNO, true);
-                    pokergame.SetCommCard_Client(recieveCommCard, c);
-                    recieveCommCard++;
-
-                    if (recieveCommCard == 5)
-                        pokergame.SetResult_Client(mypos);
-
-
-                    break;
-                }
-            case ServerToClient.ACK_ANOTHER_CARD:
-                {
-                    int pos = Convert.ToInt32(dynamicData.index);
-                    int cSuit = Convert.ToInt32(dynamicData.shape);
-                    int cNO = Convert.ToInt32(dynamicData.number);
-
-                    Card card = new Card((Card.SUIT)cSuit, cNO, false);
-
-                    if (recievePlayerCard == 0)
-                    {
-                        pokergame.ShowPlayerCard_Other(pos, recievePlayerCard, card);
-
-                        recievePlayerCard++;
-                    }
-                    else
-                    {
-                        pokergame.ShowPlayerCard_Other(pos, recievePlayerCard, card);
-
-                        recievePlayerCard = 0;
-                    }
-                    break;
-                }
-            case ServerToClient.ACK_PLAYER_STATE_INFO:
-                {
-                    int pos = Convert.ToInt32(dynamicData.index);
-                    int state = Convert.ToInt32(dynamicData.state);
-                    int price = dynamicData.price;
-
-                    //fold
-                    if (state == 0)
-                    {
-                        playerState[pos] = 0;
-                        pokergame.FoldPlayer(pos);
-                    }
-                    //check
-                    else
-                    {
-                        playerState[pos] = 1;
-                    }
-
-                    if (pos + 1 == mypos)
-                    {
-                        curRound++;
-                        if (curRound == Rounds.THIRD)
-                        {
-                            //pokergame.SetResult_Client(mypos);
-                        }
-
-                        if (playerState[mypos] == 0)
-                        {
-                            //이전에 fold를 했으면 다시 폴드 주고 넘어감
-                            string stateData = mypos.ToString() + 0.ToString() + 0.ToString();
-                            networkManager.SendDatatoServer(writeClientData_Json(2, stateData));
-                        }
-                        else
-                        {
-                            //Fold, Check 버튼 활성화
-                            uiManager.SetFoldBTNInteractable(true);
-                            uiManager.SetCheckBTNInteractable(true);
-                        }
-                    }
-                    break;
-                }
-            case ServerToClient.ACK_WINNER_INFO:
-                {
-                    int pos = Convert.ToInt32(dynamicData.index);
-                    pokergame.ShowWinner(pos);
-                    break;
-                }
+        if (recieveMyCard == 1)
+        {
+            card1 = new Card((Card.SUIT)cSuit, cNO, false);
         }
+        else if (recieveMyCard == 2)
+        {
+            card2 = new Card((Card.SUIT)cSuit, cNO, false);
+
+            for (int i = 0; i < playerInfo.Count; i++)
+            {
+                if (i == mypos)
+                {
+                    pokergame.SetPlayerCard_Self(playerInfo[i], card1, card2, i);
+                }
+                else
+                {
+                    pokergame.SetPlayerCard_Other(playerInfo[i], i);
+                }
+            }
+        }
+    }
+    void Ack_TableCard(dynamic dynamicData)
+    {
+        int cSuit = Convert.ToInt32(dynamicData.shape);
+        int cNO = Convert.ToInt32(dynamicData.number);
+
+        Card c = new Card((Card.SUIT)cSuit, cNO, true);
+        pokergame.SetCommCard_Client(recieveCommCard, c);
+        recieveCommCard++;
+
+        if (recieveCommCard == 5)
+            pokergame.SetResult_Client(mypos);
+    }
+    void Ack_AnotherCard(dynamic dynamicData)
+    {
+        int pos = Convert.ToInt32(dynamicData.index);
+        int cSuit = Convert.ToInt32(dynamicData.shape);
+        int cNO = Convert.ToInt32(dynamicData.number);
+
+        Card card = new Card((Card.SUIT)cSuit, cNO, false);
+
+        if (recievePlayerCard == 0)
+        {
+            pokergame.ShowPlayerCard_Other(pos, recievePlayerCard, card);
+
+            recievePlayerCard++;
+        }
+        else
+        {
+            pokergame.ShowPlayerCard_Other(pos, recievePlayerCard, card);
+
+            recievePlayerCard = 0;
+        }
+    }
+    void Ack_PlayerStateInfo(dynamic dynamicData)
+    {
+        int pos = Convert.ToInt32(dynamicData.index);
+        int state = Convert.ToInt32(dynamicData.state);
+        int price = dynamicData.price;
+
+        //fold
+        if (state == 0)
+        {
+            playerState[pos] = 0;
+            pokergame.FoldPlayer(pos);
+        }
+        //check
+        else
+        {
+            playerState[pos] = 1;
+        }
+
+        if (pos + 1 == mypos)
+        {
+            curRound++;
+            if (curRound == Rounds.THIRD)
+            {
+                //pokergame.SetResult_Client(mypos);
+            }
+
+            if (playerState[mypos] == 0)
+            {
+                //이전에 fold를 했으면 다시 폴드 주고 넘어감
+                P_REQ_ChangeState statePacket = new P_REQ_ChangeState((byte)mypos, 0, 0);
+                networkManager.SendDatatoServer(statePacket);
+            }
+            else
+            {
+                //Fold, Check 버튼 활성화
+                uiManager.SetFoldBTNInteractable(true);
+                uiManager.SetCheckBTNInteractable(true);
+            }
+        }
+    }
+    void Ack_WinnerInfo(dynamic dynamicData)
+    {
+        int pos = Convert.ToInt32(dynamicData.index);
+        pokergame.ShowWinner(pos);
     }
 
     #endregion
