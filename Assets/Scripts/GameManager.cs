@@ -111,7 +111,7 @@ public class GameManager : MonoBehaviour
         uiManager.SetFoldBTNInteractable(false);
         uiManager.SetCheckBTNInteractable(false);
 
-        AddPlayer(nickName);
+        AddPlayer(0, nickName);
         isServer = true;    
     }
     //클라 만들기
@@ -154,15 +154,21 @@ public class GameManager : MonoBehaviour
 
     //플레이어 추가
     public List<string> playerInfo = new List<string>();
-    public void AddPlayer(string nickname)
+    //public Dictionary<int, string> playerInfo = new Dictionary<int, string>();
+    public void AddPlayer(int pos, string nickname)
     {
-        playerInfo.Add(nickname);
-        int pos = playerInfo.FindIndex(n => n.Equals(nickname));
+        playerInfo.Insert(pos, nickname);
         pokergame.SetPlayerNickname(pos, nickname);
         if(nickname == nickName)
         {
-            mypos = pos;
+            this.mypos = pos;
         }
+    }
+
+    public void AddPlayerServer(string nickname)
+    {
+        playerInfo.Add(nickname);
+        pokergame.SetPlayerNickname(playerInfo.Count - 1, nickname);
     }
 
     //내 자신 위치 찾기
@@ -286,14 +292,14 @@ public class GameManager : MonoBehaviour
         //test
         print(nickname);
 
-        AddPlayer(nickname);
-        pokergame.SetPlayerNickname(playerInfo.Count - 1, nickname);
+        AddPlayerServer(nickname);
+        int playerPos = playerInfo.Count - 1;
 
         //모든 클라에게 새 플레이어 정보 보내기
-        P_ACK_JoinPlayer packet = new P_ACK_JoinPlayer((byte)(playerInfo.Count - 1), nickname);
+        P_ACK_JoinPlayer packet = new P_ACK_JoinPlayer((byte)(playerPos), nickname);
         for (int i = 1; i < playerInfo.Count; i++)
         {
-            if (i != playerInfo.Count - 1)
+            if (i != playerPos)
             {
                 networkManager.SendDatatoClient(packet, i);
 
@@ -304,7 +310,7 @@ public class GameManager : MonoBehaviour
         for (int i = 0; i < playerInfo.Count; i++)
         {
             P_ACK_JoinPlayer packet1 = new P_ACK_JoinPlayer((byte)i, playerInfo[i]);
-            networkManager.SendDatatoClient(packet1, playerInfo.Count - 1);
+            networkManager.SendDatatoClient(packet1, playerPos);
         }
     }
     void Req_Quit(dynamic dynamicData)
@@ -483,7 +489,7 @@ public class GameManager : MonoBehaviour
         int pos = Convert.ToInt32(dynamicData.index);
         string nickname = dynamicData.nickName;
 
-        AddPlayer(nickname);
+        AddPlayer(pos, nickname);
 
         //test
         print(nickname);
