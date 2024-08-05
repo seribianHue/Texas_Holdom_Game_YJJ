@@ -52,8 +52,8 @@ public class ClientBehaviour : MonoBehaviour
         {
             if (cmd == NetworkEvent.Type.Connect)
             {
-                if (GameManager.m_networkServerConnectEvent != null)
-                    GameManager.m_networkServerConnectEvent.Invoke();
+                if (GameManager.m_networkClientConnectEvent != null)
+                    GameManager.m_networkClientConnectEvent.Invoke();
                 Debug.Log("We are now connected to the server");
             }
             else if (cmd == NetworkEvent.Type.Data)
@@ -62,8 +62,6 @@ public class ClientBehaviour : MonoBehaviour
                 NativeArray<byte> NAByte = new NativeArray<byte>(packet, Allocator.Persistent);
                 stream.ReadBytes(NAByte);
                 packet = NAByte.ToArray();
-
-
 
                 if (GameManager.m_networkServerRecievedEvent != null)
                     GameManager.m_networkServerRecievedEvent.Invoke(packet);

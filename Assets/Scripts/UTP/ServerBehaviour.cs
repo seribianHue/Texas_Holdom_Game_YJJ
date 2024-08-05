@@ -68,6 +68,8 @@ public class ServerBehaviour : MonoBehaviour
         NetworkConnection c;
         while ((c = m_Driver.Accept()) != default(NetworkConnection))
         {
+            if (GameManager.m_networkServerConnectEvent != null)
+                GameManager.m_networkServerConnectEvent.Invoke(c);
             m_Connections.Add(c);
             Debug.Log("Accepted a connection");
         }
@@ -97,6 +99,10 @@ public class ServerBehaviour : MonoBehaviour
                 {
                     Debug.Log("Client disconnected from server");
                     m_Connections[i] = default(NetworkConnection);
+                }
+                else if (cmd == NetworkEvent.Type.Connect)
+                {
+
                 }
             }
 
@@ -143,10 +149,10 @@ public class ServerBehaviour : MonoBehaviour
     }
 
     //특정 클라에게 정보 보내기
-    public void SendAck(byte[] packet, int pos)
+    public void SendAck(byte[] packet, NetworkConnection connection)
     {
         DataStreamWriter writer;
-        m_Driver.BeginSend(m_Connections[pos - 1], out writer);
+        m_Driver.BeginSend(connection, out writer);
         NativeArray<byte> NAByte = new NativeArray<byte>(packet, Allocator.Persistent);
         writer.WriteBytes(NAByte);
         m_Driver.EndSend(writer);

@@ -6,10 +6,12 @@ public class P_ACK_JoinPlayer
     public byte id = Convert.ToByte((int)PacketID.ACK_JOIN_PLAYER);
     public byte index;
     public string nickName;
-    public P_ACK_JoinPlayer(byte index, string nickName)
+    public string UUID;
+    public P_ACK_JoinPlayer(byte index, string nickName, string UUID)
     {
         this.index = index;
         this.nickName = nickName;
+        this.UUID = UUID;
     }
 }
 
@@ -100,9 +102,11 @@ public class P_REQ_JoinGame
 {
     public byte id = Convert.ToByte((int)PacketID.REQ_JOINGAME);
     public string nickName;
-    public P_REQ_JoinGame(string nickName)
+    public string UUID;
+    public P_REQ_JoinGame(string nickName, string UUID)
     {
         this.nickName = nickName;
+        this.UUID = UUID;
     }
 }
 public class P_REQ_QuitGame

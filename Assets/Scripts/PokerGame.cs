@@ -38,39 +38,7 @@ public class Card : IEquatable<Card>
 
 }
 
-public class PlayerInfo
-{
-    string player;
-    public string Player
-    {
-        get { return player; }
-    }
 
-    Card card1;
-    public Card Card1
-    {
-        get { return card1; }
-        set { card1 = value; }
-    }
-    Card card2;
-    public Card Card2
-    {
-        get { return card2; }
-        set { card2 = value; }
-    }
-    public HAND playerHand;
-
-    public Card highestCard;
-
-    public bool isFold;
-
-    public PlayerInfo(string player, Card card1, Card card2)
-    {
-        this.player = player;
-        this.card1 = card1;
-        this.card2 = card2;
-    }
-}
 
 public class PokerGame : MonoBehaviour
 {
@@ -130,9 +98,9 @@ public class PokerGame : MonoBehaviour
     TextMeshProUGUI[] playerHand;
 
     Card[] communityCards = new Card[COMMUNITYNUM];
-    public List<PlayerInfo> playersInfo = new List<PlayerInfo>();
+    //public List<Player> playersInfo = new List<Player>();
 
-    PlayerInfo winner;
+    Player winner;
     [SerializeField]
     TextMeshProUGUI winnerText;
     void Start()
@@ -187,6 +155,12 @@ public class PokerGame : MonoBehaviour
         playerPlace[pos].transform.GetChild(4).GetComponent<TextMeshPro>().text = nickname;
     }
 
+    //플레이어 지우기
+    public void ErasePlayerNickanme(int pos)
+    {
+        playerPlace[pos].transform.GetChild(4).GetComponent<TextMeshPro>().text = "";
+    }
+
     //모든 플레이어 자리 이름 다시 설정
     public void SetPlayerNicknameAll(List<string> playersInfo)
     {
@@ -199,6 +173,22 @@ public class PokerGame : MonoBehaviour
         {
             playerPlace[i].transform.GetChild(4).GetComponent<TextMeshPro>().text = playersInfo[i];
         }
+    }
+
+    //나간 플레이어 자리 이름 초기화
+    public void SetDisconnectedNicknameNull(int pos)
+    {
+        playerPlace[pos].transform.GetChild(4).GetComponent<TextMeshPro>().text = "";
+    }
+
+    //모든 플레이어 자리 이름 초기화
+    public void SetPlayerNicknameNull()
+    {
+        foreach (var place in playerPlace)
+        {
+            place.transform.GetChild(4).GetComponent<TextMeshPro>().text = "";
+        }
+
     }
 
     //커뮤니티 카드 설정 _ 서버(정보 유)
@@ -291,47 +281,50 @@ public class PokerGame : MonoBehaviour
         }*/
 
     //각 플레이어 카드 설정 _ 서버(모든 정보 유)
-    public void SetPlayerCard_Host(string nickname, int pos)
+    public void SetPlayerCard_Host(Player player, int pos)
     {
         Card c1 = GetRandCards(1)[0];
         Card c2 = GetRandCards(1)[0];
 
-        playersInfo.Add(new PlayerInfo(nickname, c1, c2));
-        playersInfo[pos].Card1.isCommunity = false;
-        playersInfo[pos].Card2.isCommunity = false;
-        Find_Hand3(playersInfo[pos]);
+        player.card1 = c1;
+        player.card2 = c2;
+        player.card1.isCommunity = false;
+        player.card2.isCommunity = false;
+        Find_Hand3(player);
 
-        ShowCardFront(playersInfo[pos], pos);
+
+        ShowCardFront(player, pos);
     }
     //서버장 이외의 카드 설정
-    public List<int> SetPlayerCard_Guest(string nickname, int pos)
+    public List<int> SetPlayerCard_Guest(Player player, int pos)
     {
         Card c1 = GetRandCards(1)[0];
         Card c2 = GetRandCards(1)[0];
 
-        playersInfo.Add(new PlayerInfo(nickname, c1, c2));
-        playersInfo[pos].Card1.isCommunity = false;
-        playersInfo[pos].Card2.isCommunity = false;
-        Find_Hand3(playersInfo[pos]);
+        player.card1 = c1;
+        player.card2 = c2;
+        player.card1.isCommunity = false;
+        player.card2.isCommunity = false;
+        Find_Hand3(player);
 
-        ShowCardFront(playersInfo[pos], pos);
+        ShowCardFront(player, pos);
         //ShowCardBack(playersInfo[pos], pos);
 
         List<int> cardInfo = new List<int>()
-                    { ((int)playersInfo[pos].Card1.suit), playersInfo[pos].Card1.no,
-                    (int) playersInfo[pos].Card2.suit, playersInfo[pos].Card2.no};
+                    { ((int)player.card1.suit), player.card1.no,
+                    (int) player.card2.suit, player.card2.no};
 
         return cardInfo;
     }
 
     //폴드한 플레이어 설정
-    public void FoldPlayer(int pos)
+/*    public void FoldPlayer(int pos)
     {
         playersInfo[pos].isFold = true;
-    }
+    }*/
 
     //모든 플레이어 카드 계산
-    public void SetResultAll()
+/*    public void SetResultAll()
     {
         for(int i = 0; i < playersInfo.Count; i++)
         {
@@ -342,12 +335,21 @@ public class PokerGame : MonoBehaviour
             GameObject cObj = GetCardPrefab((int)highCard.suit, highCard.no - 2);
             var c = Instantiate(cObj, playerPlace[i].transform.GetChild(2));
         }
-    }
+    }*/
 
     //승자 계산
-    public int FindWinner(out List<PlayerInfo> playerCardInfo)
+    public int FindWinner(Player[] players)
     {
-        PlayerInfo[] winners = playersInfo.Where(n => n.playerHand == playersInfo.Min(x => x.playerHand))
+/*        List<Player> curPlayers = new List<Player>();
+        foreach (var p in players)
+        {
+            if(p != null)
+            {
+                curPlayers.Add(p);
+            }
+        }*/
+        var winners = players.Where(n => n != null).Where(n => n.isFold == false)
+            .Where(n => n.playerHand == players.Min(x => x.playerHand))
             .ToArray();
         /*        if (winners.Length > 1)
                 {
@@ -374,32 +376,34 @@ public class PokerGame : MonoBehaviour
                 break;
             }
         }
-        winnerText.text = "Winner : " + winner.Player;
-        playerCardInfo = playersInfo;
-        return playersInfo.FindIndex(n => n.highestCard == winner.highestCard);
+        winnerText.text = "Winner : " + winner.nickname;
+
+        return Array.FindIndex(players, p => p.UUID == winner.UUID);
+
+        //return players.Where(n => n != null).Select(n => n.highestCard == winner.highestCard);
     }
 
     //승자 보여주기 _ 클라
-    public void ShowWinner(int pos)
+    public void ShowWinner(Player player)
     {
-        winner = playersInfo[pos];
-        winnerText.text = "Winner : " + winner.Player;
+        winner = player;
+        winnerText.text = "Winner : " + winner.nickname;
     }
 
     //카드 보여주기 _ 앞, 뒤
-    void ShowCardFront(PlayerInfo playerinfo, int pos)
+    void ShowCardFront(Player player, int pos)
     {
-        GameObject cObj1 = GetCardPrefab((int)playerinfo.Card1.suit, playerinfo.Card1.no - 2);
-        GameObject cObj2 = GetCardPrefab((int)playerinfo.Card2.suit, playerinfo.Card2.no - 2);
+        GameObject cObj1 = GetCardPrefab((int)player.card1.suit, player.card1.no - 2);
+        GameObject cObj2 = GetCardPrefab((int)player.card2.suit, player.card2.no - 2);
         Instantiate(cObj1, playerPlace[pos].transform.GetChild(0).position,
             Quaternion.Euler(playerPlace[pos].transform.GetChild(0).rotation.eulerAngles));
         Instantiate(cObj2, playerPlace[pos].transform.GetChild(1).position,
             Quaternion.Euler(playerPlace[pos].transform.GetChild(1).rotation.eulerAngles));
     }
-    void ShowCardBack(PlayerInfo playerinfo, int pos)
+    void ShowCardBack(Player playerinfo, int pos)
     {
-        GameObject cObj1 = GetCardPrefab((int)playerinfo.Card1.suit, playerinfo.Card1.no - 2);
-        GameObject cObj2 = GetCardPrefab((int)playerinfo.Card2.suit, playerinfo.Card2.no - 2);
+        GameObject cObj1 = GetCardPrefab((int)playerinfo.card1.suit, playerinfo.card1.no - 2);
+        GameObject cObj2 = GetCardPrefab((int)playerinfo.card2.suit, playerinfo.card2.no - 2);
         Instantiate(cObj1, playerPlace[pos].transform.GetChild(0).position,
             Quaternion.Euler(playerPlace[pos].transform.GetChild(0).rotation.eulerAngles + new Vector3(180, 0, 0)));
         Instantiate(cObj2, playerPlace[pos].transform.GetChild(1).position,
@@ -408,73 +412,58 @@ public class PokerGame : MonoBehaviour
 
 
     //각 플레이어 카드 설정 _ 클라(자신 정보만 유)
-    public void SetPlayerCard_Self(string nickname, Card c1, Card c2, int pos)
+    public void SetPlayerCard_Self(Player player, int pos)
     {
-        playersInfo.Add(new PlayerInfo(nickname, c1, c2));
-
-        ShowCardFront(playersInfo[pos], pos);
+        ShowCardFront(player, pos);
     }
 
     //클라 자신 패 계산, 높은 카드 보이기
-    public void SetResult_Client(int mypos)
+    public void SetResult_Client(Player player, int pos)
     {
-        Find_Hand3(playersInfo[mypos]);
-        playerPlace[mypos].transform.GetChild(3).GetComponent<TextMeshPro>().text
-            = playersInfo[mypos].playerHand.ToString();
-        Card highCard = playersInfo[mypos].highestCard;
+        Find_Hand3(player);
+        playerPlace[pos].transform.GetChild(3).GetComponent<TextMeshPro>().text
+            = player.playerHand.ToString();
+        Card highCard = player.highestCard;
         GameObject cObj = GetCardPrefab((int)highCard.suit, highCard.no - 2);
-        var c = Instantiate(cObj, playerPlace[mypos].transform.GetChild(2));
+        var c = Instantiate(cObj, playerPlace[pos].transform.GetChild(2));
     }
 
     //다른 사람 정보 모르게 각 플레이어 카드 설정
-    public void SetPlayerCard_Other(string nickname, int pos)
+    public void SetPlayerCard_Other(Player player, int pos)
     {
-        playersInfo.Add(new PlayerInfo(nickname, new Card((Card.SUIT)0, 14, true),
-            new Card((Card.SUIT)0, 14, true)));
+        player.card1 = new Card((Card.SUIT)0, 14, true);
+        player.card2 = new Card((Card.SUIT)0, 14, true);
 
-        ShowCardBack(playersInfo[pos], pos);
+        ShowCardBack(player, pos);
     }
 
     //다른 플레이어 카드 설정 _ 클라
-    public void ShowPlayerCard_Other(int pos, int cardnum, Card card)
+    public void ShowPlayerCard_Other(Player player, int cardnum, Card card, int pos)
     {
         if(cardnum == 0)
         {
-            playersInfo[pos].Card1 = card;
-            Destroy(playersInfo[pos].Card1.cardObj);
-            GameObject cObj = GetCardPrefab((int)playersInfo[pos].Card1.suit, playersInfo[pos].Card1.no - 2);
+            player.card1 = card;
+            Destroy(player.card1.cardObj);
+            GameObject cObj = GetCardPrefab((int)player.card1.suit, player.card1.no - 2);
             var c = Instantiate(cObj, playerPlace[pos].transform.GetChild(0));
-            playersInfo[pos].Card1.cardObj = c;
+            player.card1.cardObj = c;
         }
         else
         {
-            playersInfo[pos].Card2 = card;
-            Destroy(playersInfo[pos].Card2.cardObj);
-            GameObject cObj = GetCardPrefab((int)playersInfo[pos].Card2.suit, playersInfo[pos].Card2.no - 2);
+            player.card2 = card;
+            Destroy(player.card2.cardObj);
+            GameObject cObj = GetCardPrefab((int)player.card2.suit, player.card2.no - 2);
             var c = Instantiate(cObj, playerPlace[pos].transform.GetChild(1));
-            playersInfo[pos].Card2.cardObj = c;
+            player.card2.cardObj = c;
         }
     }
 
 
-    public void ShowMyCard(PlayerInfo myInfo, int index)
-    {
-        //show player card
-        GameObject cObj1 = GetCardPrefab((int)myInfo.Card1.suit, myInfo.Card1.no - 2);
-        GameObject cObj2 = GetCardPrefab((int)myInfo.Card2.suit, myInfo.Card2.no - 2);
-        Instantiate(cObj1, playerPlace[index + 1].transform.GetChild(0).position,
-             Quaternion.Euler(playerPlace[index + 1].transform.GetChild(0).rotation.eulerAngles));
-        Instantiate(cObj2, playerPlace[index + 1].transform.GetChild(1).position,
-            Quaternion.Euler(playerPlace[index + 1].transform.GetChild(1).rotation.eulerAngles ));
-        //Instantiate(cObj2, playerPlace[index + 1].transform.GetChild(1));
-
-    }
 
 
 
 
-
-    void Find_Hand3(PlayerInfo player)
+    void Find_Hand3(Player player)
     {
         List<Card> handCardsFlush = new List<Card>();
         List<Card> handCardsStrait = new List<Card>();
@@ -484,8 +473,8 @@ public class PokerGame : MonoBehaviour
         {
             cards.Add(communityCards[i]);
         }
-        cards.Add(player.Card1);
-        cards.Add(player.Card2);
+        cards.Add(player.card1);
+        cards.Add(player.card2);
 
         HAND handFlush = Find_FlushGroup(cards, out handCardsFlush);
         HAND handPair = HAND.HIGH_CARD;
@@ -524,7 +513,7 @@ public class PokerGame : MonoBehaviour
         }
     }
 
-    Card Find_PlayerInvolvedCard(List<Card> cards, PlayerInfo player)
+    Card Find_PlayerInvolvedCard(List<Card> cards, Player player)
     {
         Card playerCard;
         cards = cards.OrderBy(c => c.suit).OrderByDescending(c => c.no).ToList();
@@ -536,18 +525,18 @@ public class PokerGame : MonoBehaviour
                 return playerCard;
             }
         }
-        if(player.Card1.no > player.Card2.no)
+        if(player.card1.no > player.card2.no)
         {
-            return player.Card1;
+            return player.card1;
         }
-        else if(player.Card1.no < player.Card2.no)
-            return player.Card2;
+        else if(player.card1.no < player.card2.no)
+            return player.card2;
         else
         {
-            if(player.Card1.suit > player.Card2.suit)
-                return player.Card1;
+            if(player.card1.suit > player.card2.suit)
+                return player.card1;
             else
-                return player.Card2;
+                return player.card2;
         }
     }
 

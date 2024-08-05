@@ -46,11 +46,11 @@ public class NetworkManager : MonoBehaviour
         m_Server.SendAcktoAll(byteData);
     }
     //서버 -> 특정 클라에게 정보 보내기
-    public void SendDatatoClient<T>(T packet, int pos)
+    public void SendDatatoClient<T>(T packet, NetworkConnection connection)
     {
         string jsonString = JsonUtility.ToJson(packet);
         byte[] byteData = Encoding.UTF8.GetBytes(jsonString);
-        m_Server.SendAck(byteData, pos);
+        m_Server.SendAck(byteData, connection);
     }
 
     //서버 종료

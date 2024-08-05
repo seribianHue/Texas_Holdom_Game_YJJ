@@ -7,12 +7,14 @@ using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Events;
 using Newtonsoft.Json;
+using Unity.Networking.Transport;
 
 
 public class NetworkRecievedClient : UnityEvent<byte[]> { }
 public class NetworkRecievedServer : UnityEvent<byte[]> { }
 
-public class NetworkConnectEvent : UnityEvent { }
+public class ClientNetworkConnectEvent : UnityEvent { }
+public class ServerNetworkConnectEvent : UnityEvent<NetworkConnection> { }
 
 public class ClientNetworkDisconnectEvent : UnityEvent { }
 public class ServerNetworkDisconnectEvent : UnityEvent { }
@@ -23,7 +25,9 @@ public class GameManager : MonoBehaviour
     public static NetworkRecievedClient m_networkClientRecievedEvent;
     public static NetworkRecievedServer m_networkServerRecievedEvent;
 
-    public static NetworkConnectEvent m_networkServerConnectEvent;
+    public static ClientNetworkConnectEvent m_networkClientConnectEvent;
+    public static ServerNetworkConnectEvent m_networkServerConnectEvent;
+
 
     public static ClientNetworkDisconnectEvent m_clientNetworkDisconnectEvent;
     public static ServerNetworkDisconnectEvent m_serverNetworkDisconnectEvent;
@@ -33,19 +37,20 @@ public class GameManager : MonoBehaviour
         if (m_networkClientRecievedEvent == null)
             m_networkClientRecievedEvent = new NetworkRecievedClient();
         m_networkClientRecievedEvent.AddListener(ReadRecievedClientData_Json);
-
         if (m_networkServerRecievedEvent == null)
             m_networkServerRecievedEvent = new NetworkRecievedServer();
         m_networkServerRecievedEvent.AddListener(ReadRecievedServerData_Json);
 
+        if(m_networkClientConnectEvent == null)
+            m_networkClientConnectEvent = new ClientNetworkConnectEvent();
+        m_networkClientConnectEvent.AddListener(SendMyInfotoServer);
         if(m_networkServerConnectEvent == null)
-            m_networkServerConnectEvent = new NetworkConnectEvent();
-        m_networkServerConnectEvent.AddListener(SendMyInfotoServer);
+            m_networkServerConnectEvent = new ServerNetworkConnectEvent();
+        m_networkServerConnectEvent.AddListener(RecieveConnectionInfo);
 
         if (m_clientNetworkDisconnectEvent == null)
             m_clientNetworkDisconnectEvent = new ClientNetworkDisconnectEvent();
         m_clientNetworkDisconnectEvent.AddListener(ClientNetworkDisconnected);
-
         if (m_serverNetworkDisconnectEvent == null)
             m_serverNetworkDisconnectEvent = new ServerNetworkDisconnectEvent();
         m_serverNetworkDisconnectEvent.AddListener(ServerNetworkDisconnected);
@@ -71,18 +76,27 @@ public class GameManager : MonoBehaviour
     [SerializeField] UIManager uiManager;
 
     const int COMMUNITYNUM = 5;
+    const int MAXPLAYERNUM = 8;
 
-    PlayerInfo myInfo;
+    Player myInfo;
     public string nickName;
     public int mypos;
+    
+
+    public Player[] players = new Player[MAXPLAYERNUM];
 
     public bool isServer;
 
-    #region Setting Nickname, IP, Port
+    #region Setting Nickname, myInfo, IP, Port
     //닉네임 설정
     public void SetNickName(string nickName)
     {
         this.nickName = nickName;
+    }
+
+    public void SetMyInfo(string nickname, string UUID)
+    {
+        myInfo = new Player(nickname, UUID);
     }
 
     //IP 설정
@@ -98,6 +112,11 @@ public class GameManager : MonoBehaviour
     {
         this.portNum = portNum;
     }
+
+    string GetMyUUID()
+    {
+        return SystemInfo.deviceUniqueIdentifier;
+    }
     #endregion
 
     #region Server, Client Create
@@ -111,12 +130,16 @@ public class GameManager : MonoBehaviour
         uiManager.SetFoldBTNInteractable(false);
         uiManager.SetCheckBTNInteractable(false);
 
-        AddPlayer(0, nickName);
+        myInfo = new Player(nickName, GetMyUUID());
+        AddPlayer(0, nickName, myInfo.UUID);
         isServer = true;    
     }
     //클라 만들기
     public void CreateClient()
     {
+        myInfo = new Player(nickName, GetMyUUID());
+        isServer = false;
+
         networkManager.CreateClient(IPv4, portNum);
 
         uiManager.SetLobbyUI(false);
@@ -124,8 +147,6 @@ public class GameManager : MonoBehaviour
 
         uiManager.SetFoldBTNInteractable(false);
         uiManager.SetCheckBTNInteractable(false);
-
-        isServer = false;
     }
     #endregion
 
@@ -135,16 +156,22 @@ public class GameManager : MonoBehaviour
         P_REQ_QuitGame packetQuit = new P_REQ_QuitGame((byte)mypos);
         networkManager.SendDatatoServer(packetQuit);
 
-        playerInfo.Clear();
-        pokergame.SetPlayerNicknameAll(playerInfo);
+        for(int i = 0; i < players.Length; i++)
+        {
+            players[i] = null;
+        }
+        pokergame.SetPlayerNicknameNull();
 
         uiManager.SetLobbyUI(true);
     }
 
     public void ServerNetworkDisconnected()
     {
-        playerInfo.Clear();
-        pokergame.SetPlayerNicknameAll(playerInfo);
+        for (int i = 0; i < players.Length; i++)
+        {
+            players[i] = null;
+        }
+        pokergame.SetPlayerNicknameNull();
 
         uiManager.SetLobbyUI(true);
     }
@@ -153,45 +180,72 @@ public class GameManager : MonoBehaviour
 
 
     //플레이어 추가
-    public List<string> playerInfo = new List<string>();
-    //public Dictionary<int, string> playerInfo = new Dictionary<int, string>();
-    public void AddPlayer(int pos, string nickname)
+    public void AddPlayer(int pos, string nickname, string UUID)
     {
-        playerInfo.Insert(pos, nickname);
+        players[pos] = new Player(nickname, UUID);
         pokergame.SetPlayerNickname(pos, nickname);
-        if(nickname == nickName)
+        if(myInfo.UUID == UUID)
         {
-            this.mypos = pos;
+            myInfo = players[pos];
+            mypos = pos;
         }
     }
 
-    public void AddPlayerServer(string nickname)
+    int FindEmptyPlayerPlace()
     {
-        playerInfo.Add(nickname);
-        pokergame.SetPlayerNickname(playerInfo.Count - 1, nickname);
+        int pos = -1;
+        for(int i = 0; i < players.Length; i++)
+        {
+            if (players[i] == null)
+               return i;
+        }
+        return pos;
+    }
+
+    public void AddPlayerServer(int pos, string nickname, string UUID)
+    {
+        players[pos] = new Player(nickname, UUID);
+        pokergame.SetPlayerNickname(pos, nickname);
+    }
+
+    //게임 시작시 현재 플레이어 순서 정리
+    List<int> playOrderList = new List<int>();
+    void PlayOrderSet(int startPos)
+    {
+        for(int i = startPos; i < players.Length; i++)
+        {
+            if(players[i] != null)
+                playOrderList.Add(i);
+        }
+        for (int i = 0; i < startPos; i++)
+        {
+            if (players[i] != null)
+                playOrderList.Add(i);
+        }
     }
 
     //내 자신 위치 찾기
-    public void SetMyPos()
-    {
-        for(int i = 0; i < playerInfo.Count; i++)
+    /*    public void SetMyPos()
         {
-            if (playerInfo[i] == this.nickName)
+            for(int i = 0; i < playerInfo.Count; i++)
             {
-                mypos = i;
+                if (playerInfo[i] == this.nickName)
+                {
+                    mypos = i;
+                }
             }
-        }
-    }
+        }*/
 
     //자리 정리 (nickname)
-    public void SetGameNicknames()
-    {
-        pokergame.SetPlayerNicknameAll(playerInfo);
-    }
+    /*    public void SetGameNicknames()
+        {
+            pokergame.SetPlayerNicknameAll(playerInfo);
+        }*/
 
     //라운드 관리
-    List<int> playerState = new List<int>();
     Rounds curRound;
+
+/*    List<int> playerState = new List<int>();
     void InitPlayerState()
     {
         foreach (var player in playerInfo)
@@ -199,7 +253,7 @@ public class GameManager : MonoBehaviour
             playerState.Add(-1);
         }
         curRound = Rounds.SETTING;
-    }
+    }*/
 
     #region Fold Check BTN
 
@@ -207,7 +261,6 @@ public class GameManager : MonoBehaviour
     {
         if (isServer)
         {
-            playerState[0] = 0;
             uiManager.SetFoldBTNInteractable(false);
             uiManager.SetCheckBTNInteractable(false);
             //send packet
@@ -222,13 +275,13 @@ public class GameManager : MonoBehaviour
             uiManager.SetFoldBTNInteractable(false);
             uiManager.SetCheckBTNInteractable(false);
         }
-        pokergame.FoldPlayer(mypos);
+        myInfo.isFold = true;
+        //pokergame.FoldPlayer(mypos);
     }
     public void Check_BTN()
     {
         if (isServer)
         {
-            playerState[0] = 1;
             uiManager.SetFoldBTNInteractable(false);
             uiManager.SetCheckBTNInteractable(false);
             //send packet
@@ -277,40 +330,47 @@ public class GameManager : MonoBehaviour
 
         if(mapPackets.ContainsKey((PacketID)dynamicData.id))
             mapPackets[(PacketID)dynamicData.id](dynamicData);
+    }
 
-/*        switch ((PacketID)dynamicData.id)
-        {
-            case PacketID.REQ_JOINGAME: Req_JoinGame(dynamicData); break;
-            case PacketID.REQ_QUIT: Req_Quit(dynamicData); break;
-            case PacketID.REQ_CHANGESTATE: Req_ChangeState(dynamicData); break;
-        }*/
+    NetworkConnection tmpNet;
+    public void RecieveConnectionInfo(NetworkConnection connection)
+    {
+        tmpNet = connection;
     }
 
     void Req_JoinGame(dynamic dynamicData)
     {
         string nickname = dynamicData.nickName;
+        string UUID = dynamicData.UUID;
         //test
-        print(nickname);
+        print(nickname + UUID);
 
-        AddPlayerServer(nickname);
-        int playerPos = playerInfo.Count - 1;
+        int pos = FindEmptyPlayerPlace();
+        AddPlayerServer(pos, nickname, UUID);
+        players[pos].connection = tmpNet;
+        //int playerPos = playerInfo.Count - 1;
 
         //모든 클라에게 새 플레이어 정보 보내기
-        P_ACK_JoinPlayer packet = new P_ACK_JoinPlayer((byte)(playerPos), nickname);
-        for (int i = 1; i < playerInfo.Count; i++)
+        P_ACK_JoinPlayer packet = new P_ACK_JoinPlayer(Convert.ToByte(pos), nickname, UUID);
+        for (int i = 1; i < players.Length; i++)
         {
-            if (i != playerPos)
-            {
-                networkManager.SendDatatoClient(packet, i);
+            if (players[i] == null)
+                continue;
 
+            if (i != pos)
+            {
+                networkManager.SendDatatoClient(packet, players[i].connection);
             }
         }
 
         //새 멤버한테 기존 사람들 정보 알려주기
-        for (int i = 0; i < playerInfo.Count; i++)
+        for (int i = 0; i < players.Length; i++)
         {
-            P_ACK_JoinPlayer packet1 = new P_ACK_JoinPlayer((byte)i, playerInfo[i]);
-            networkManager.SendDatatoClient(packet1, playerPos);
+            if (players[i] == null)
+                continue;
+
+            P_ACK_JoinPlayer packet1 = new P_ACK_JoinPlayer((byte)i, players[i].nickname, players[i].UUID);
+            networkManager.SendDatatoClient(packet1, players[pos].connection);
         }
     }
     void Req_Quit(dynamic dynamicData)
@@ -318,9 +378,9 @@ public class GameManager : MonoBehaviour
         int pos = Convert.ToInt32(dynamicData.index);
         networkManager.DisconnectClient(pos);
 
-        playerInfo.RemoveAt(pos);
-        pokergame.SetPlayerNicknameAll(playerInfo);
-        if (playerInfo.Count > 1)
+        players[pos] = null;
+        pokergame.ErasePlayerNickanme(pos);
+        if (players.Length > 1)
         {
             P_ACK_QuitSomebody packet1 = new P_ACK_QuitSomebody((byte)pos);
             networkManager.SendDatatoClientAll(packet1);
@@ -334,15 +394,10 @@ public class GameManager : MonoBehaviour
 
         if (state == 0)
         {
-            playerState[pos] = 0;
-            pokergame.FoldPlayer(pos);
-        }
-        else
-        {
-            playerState[pos] = 1;
+            players[pos].isFold = true;
         }
 
-        if (pos == playerState.Count - 1)
+        if (pos == playOrderList[playOrderList.Count - 1])
         {
             //start next round
             curRound += 1;
@@ -382,21 +437,22 @@ public class GameManager : MonoBehaviour
             }
             else if (curRound == Rounds.FINALL)
             {
-                List<PlayerInfo> playerCardInfo;
-                int winnerIndex = pokergame.FindWinner(out playerCardInfo);
+                int winnerIndex = pokergame.FindWinner(players);
 
-                P_ACK_Winner packetWin = new P_ACK_Winner((byte)winnerIndex);
-                networkManager.SendDatatoClientAll(packetWin);
-                for (int i = 0; i < playerState.Count; i++)
+                P_ACK_Winner packetWinner = new P_ACK_Winner((byte)winnerIndex);
+                networkManager.SendDatatoClientAll(packetWinner);
+                for (int i = 0; i < players.Length; i++)
                 {
-                    if (playerState[i] == 1)
+                    if(players[i] == null) 
+                        continue;
+                    if (players[i].isFold == false)
                     {
                         P_ACK_AnotherCard packet1 = new P_ACK_AnotherCard(
-                            (byte)i, (byte)((int)playerCardInfo[i].Card1.suit), (byte)playerCardInfo[i].Card1.no);
+                            (byte)i, (byte)((int)players[i].card1.suit), (byte)players[i].card1.no);
                         networkManager.SendDatatoClientAll(packet1);
 
                         P_ACK_AnotherCard packet2 = new P_ACK_AnotherCard(
-                            (byte)i, (byte)((int)playerCardInfo[i].Card2.suit), (byte)playerCardInfo[i].Card2.no);
+                            (byte)i, (byte)((int)players[i].card2.suit), (byte)players[i].card2.no);
                         networkManager.SendDatatoClientAll(packet2);
 
                     }
@@ -414,22 +470,26 @@ public class GameManager : MonoBehaviour
     public void GameStartBTN()
     {
         pokergame.SetCommunityCard_Server();
+        PlayOrderSet(0);
 
         P_ACK_GameStart packet = new P_ACK_GameStart();
         networkManager.SendDatatoClientAll(packet);
 
-        for (int i = 0; i < playerInfo.Count; i++)
+        for (int i = 0; i < players.Length; i++)
         {
+            if (players[i] == null)
+                continue;
+
             if (i == 0)
-                pokergame.SetPlayerCard_Host(playerInfo[i], i);
+                pokergame.SetPlayerCard_Host(players[i], i);
             else
             {
-                List<int> cardinfo = pokergame.SetPlayerCard_Guest(playerInfo[i], i);
+                List<int> cardinfo = pokergame.SetPlayerCard_Guest(players[i], i);
 
                 P_ACK_PersonalCard packet1 = new P_ACK_PersonalCard((byte)cardinfo[0], (byte)cardinfo[1]);
                 P_ACK_PersonalCard packet2 = new P_ACK_PersonalCard((byte)cardinfo[2], (byte)cardinfo[3]);
-                networkManager.SendDatatoClient(packet1, i);
-                networkManager.SendDatatoClient(packet2, i);
+                networkManager.SendDatatoClient(packet1, players[i].connection);
+                networkManager.SendDatatoClient(packet2, players[i].connection);
 
             }
         }
@@ -438,7 +498,7 @@ public class GameManager : MonoBehaviour
         uiManager.SetFoldBTNInteractable(true);
         uiManager.SetCheckBTNInteractable(true);
 
-        InitPlayerState(); //플레이어 현재 상태 초기화
+        //InitPlayerState(); //플레이어 현재 상태 초기화
 
     }
 
@@ -450,7 +510,7 @@ public class GameManager : MonoBehaviour
     //클라에서 서버에게 자신의 정보 보내기
     public void SendMyInfotoServer()
     {
-        P_REQ_JoinGame joinPacket = new P_REQ_JoinGame(nickName);
+        P_REQ_JoinGame joinPacket = new P_REQ_JoinGame(myInfo.nickname, myInfo.UUID);
         networkManager.SendDatatoServer(joinPacket);
     }
 
@@ -469,27 +529,15 @@ public class GameManager : MonoBehaviour
 
         if (mapPackets.ContainsKey((PacketID)dynamicData.id))
             mapPackets[(PacketID)dynamicData.id](dynamicData);
-
-
-/*        switch ((PacketID)dynamicData.id)
-        {
-            case PacketID.ACK_JOIN_PLAYER: Ack_JoinPlayer(dynamicData); break;
-            case PacketID.ACK_QUIT_SOMEBODY: Ack_QuitSomeBody(dynamicData); break;
-            case PacketID.ACK_GAME_START: Ack_GameStart(dynamicData); break;
-            case PacketID.ACK_PERSONAL_CARD: Ack_PersonalCard(dynamicData); break;
-            case PacketID.ACK_TABLE_CARD: Ack_TableCard(dynamicData); break;
-            case PacketID.ACK_ANOTHER_CARD: Ack_AnotherCard(dynamicData); break;
-            case PacketID.ACK_PLAYER_STATE_INFO: Ack_PlayerStateInfo(dynamicData); break;
-            case PacketID.ACK_WINNER_INFO: Ack_WinnerInfo(dynamicData); break;
-        }*/
     }
 
     void Ack_JoinPlayer(dynamic dynamicData)
     {
         int pos = Convert.ToInt32(dynamicData.index);
         string nickname = dynamicData.nickName;
+        string UUID = dynamicData.UUID;
 
-        AddPlayer(pos, nickname);
+        AddPlayer(pos, nickname, UUID);
 
         //test
         print(nickname);
@@ -498,14 +546,13 @@ public class GameManager : MonoBehaviour
     {
         int pos = Convert.ToInt32(dynamicData.index);
 
-        playerInfo.RemoveAt(pos);
-        SetMyPos();
-        pokergame.SetPlayerNicknameAll(playerInfo);
+        players[pos] = null;
+        pokergame.SetDisconnectedNicknameNull(pos);
     }
     void Ack_GameStart(dynamic dynamicData)
     {
-        InitPlayerState();
         pokergame.InitCommunityCard_Client();
+        PlayOrderSet(0);
     }
     void Ack_PersonalCard(dynamic dynamicData)
     {
@@ -521,15 +568,20 @@ public class GameManager : MonoBehaviour
         {
             card2 = new Card((Card.SUIT)cSuit, cNO, false);
 
-            for (int i = 0; i < playerInfo.Count; i++)
+            for (int i = 0; i < players.Length; i++)
             {
+                if (players[i] == null)
+                    continue;
+
                 if (i == mypos)
                 {
-                    pokergame.SetPlayerCard_Self(playerInfo[i], card1, card2, i);
+                    players[i].card1 = card1;
+                    players[i].card2 = card2;
+                    pokergame.SetPlayerCard_Self(players[i], i);
                 }
                 else
                 {
-                    pokergame.SetPlayerCard_Other(playerInfo[i], i);
+                    pokergame.SetPlayerCard_Other(players[i], i);
                 }
             }
         }
@@ -544,7 +596,7 @@ public class GameManager : MonoBehaviour
         recieveCommCard++;
 
         if (recieveCommCard == 5)
-            pokergame.SetResult_Client(mypos);
+            pokergame.SetResult_Client(myInfo, mypos);
     }
     void Ack_AnotherCard(dynamic dynamicData)
     {
@@ -556,13 +608,13 @@ public class GameManager : MonoBehaviour
 
         if (recievePlayerCard == 0)
         {
-            pokergame.ShowPlayerCard_Other(pos, recievePlayerCard, card);
+            pokergame.ShowPlayerCard_Other(players[pos], recievePlayerCard, card, pos);
 
             recievePlayerCard++;
         }
         else
         {
-            pokergame.ShowPlayerCard_Other(pos, recievePlayerCard, card);
+            pokergame.ShowPlayerCard_Other(players[pos], recievePlayerCard, card, pos);
 
             recievePlayerCard = 0;
         }
@@ -576,16 +628,12 @@ public class GameManager : MonoBehaviour
         //fold
         if (state == 0)
         {
-            playerState[pos] = 0;
-            pokergame.FoldPlayer(pos);
-        }
-        //check
-        else
-        {
-            playerState[pos] = 1;
+            players[pos].isFold = true;
+            //pokergame.FoldPlayer(pos);
         }
 
-        if (pos + 1 == mypos)
+        if ((playOrderList.IndexOf(pos) < playOrderList.Count - 1) 
+            && (playOrderList[playOrderList.IndexOf(pos) + 1] == mypos))
         {
             curRound++;
             if (curRound == Rounds.THIRD)
@@ -593,7 +641,7 @@ public class GameManager : MonoBehaviour
                 //pokergame.SetResult_Client(mypos);
             }
 
-            if (playerState[mypos] == 0)
+            if (players[mypos].isFold == true)
             {
                 //이전에 fold를 했으면 다시 폴드 주고 넘어감
                 P_REQ_ChangeState statePacket = new P_REQ_ChangeState((byte)mypos, 0, 0);
@@ -610,7 +658,7 @@ public class GameManager : MonoBehaviour
     void Ack_WinnerInfo(dynamic dynamicData)
     {
         int pos = Convert.ToInt32(dynamicData.index);
-        pokergame.ShowWinner(pos);
+        pokergame.ShowWinner(players[pos]);
     }
 
     #endregion
